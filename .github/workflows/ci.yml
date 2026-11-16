@@ -591,7 +591,8 @@ jobs:
     name: Mobile Native Static Analysis
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.mobile_native != 'false' }}
-    runs-on: macos-26
+    # These source linters do not need ARM; use the hosted Intel pool.
+    runs-on: macos-26-intel
     timeout-minutes: 10
     steps:
       - name: Checkout
