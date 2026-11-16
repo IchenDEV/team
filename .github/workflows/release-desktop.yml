@@ -140,6 +140,15 @@ jobs:
       T3CODE_CLERK_CLI_OAUTH_CLIENT_ID: ${{ inputs.clerk_cli_oauth_client_id }}
       T3CODE_RELAY_URL: ${{ inputs.relay_url }}
     steps:
+      # Linux ARM64 CLI production is disabled for this phase; Windows ARM64
+      # requires that same-arch WSL payload. Keep its checks and publication held.
+      - name: Refuse Windows ARM64 without its Linux WSL runtime
+        if: inputs.platform == 'win' && inputs.arch == 'arm64'
+        shell: bash
+        run: |
+          echo "::error::Windows ARM64 release held: Linux ARM64 CLI production is disabled. See docs/operations/release.md#team-arm64-release-policy."
+          exit 1
+
       # The launch check and the CLI archive smoke test both run the bundle.
       - name: Reject running an untrusted bundle
         if: inputs.untrusted_bundle && (inputs.launch_check || inputs.cli_archive)
