@@ -25,6 +25,7 @@
 `scripts/sync-upstream.sh`
 
 同步规则：
+
 1. 运行前必须保证本地没有未提交的改动。
 2. 脚本从 `https://github.com/pingdotgg/t3code.git` 拉取上游主分支并执行合并。
 3. 合并过程不执行强制覆盖。

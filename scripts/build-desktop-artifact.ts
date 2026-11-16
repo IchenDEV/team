@@ -2845,8 +2845,7 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
         NSAutoFillRequiresTextContentTypeForOneTimeCodeOnMac: true,
         NSLocalNetworkUsageDescription:
           "#Team connects to devices on your local network for remote environments and commands run by terminals and coding agents.",
-        NSCalendarsUsageDescription:
-          "Commands you run in #Team may need access to your calendars.",
+        NSCalendarsUsageDescription: "Commands you run in #Team may need access to your calendars.",
         NSCalendarsFullAccessUsageDescription:
           "Commands you run in #Team may need to read and write your calendar events.",
         NSCalendarsWriteOnlyAccessUsageDescription:
