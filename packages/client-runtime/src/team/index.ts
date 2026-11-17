@@ -4,6 +4,8 @@ import {
   TeamRole as TeamRoleSchema,
   TeamRpcGroup,
   TeamWorkspaceAccess as TeamWorkspaceAccessSchema,
+  teamErrorMessage,
+  type TeamErrorRule,
 } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -41,7 +43,7 @@ const toTeamApiError = (cause: unknown): TeamApiError => {
   if (isTeamApiError(cause)) return cause;
   if (isTeamError(cause)) {
     return new TeamApiError({
-      message: cause.rule,
+      message: teamErrorMessage(cause.rule as TeamErrorRule),
       rule: cause.rule,
       status: teamRuleStatus(cause.rule),
     });

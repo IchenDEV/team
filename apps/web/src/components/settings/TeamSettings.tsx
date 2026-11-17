@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { TeamArtifact, TeamRole } from "@t3tools/client-runtime/team";
 import { CopyIcon, DownloadIcon, ExternalLinkIcon } from "lucide-react";
 
+import { requestConfirmDialog } from "../../confirmDialog";
 import { useTeamStore } from "../../team/teamStore";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -20,7 +21,9 @@ const formatBytes = (bytes: number): string => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-const artifactUrl = (path: string): string => `${window.location.origin.replace(/\/$/, "")}${path}`;
+/** Artifact paths belong to the environment origin, which is not always the page origin. */
+const artifactUrl = (baseUrl: string | null, path: string): string =>
+  `${(baseUrl ?? window.location.origin).replace(/\/$/, "")}${path}`;
 
 function TeamErrorNote({ message }: { message: string | null }) {
   if (message === null) return null;
@@ -117,19 +120,22 @@ function SessionSection() {
 
 function WorkspaceSection() {
   const workspaces = useTeamStore((state) => state.workspaces);
+  const workspacesError = useTeamStore((state) => state.workspacesError);
+  const busy = useTeamStore((state) => state.busy);
   const currentWorkspaceId = useTeamStore((state) => state.currentWorkspaceId);
   const selectWorkspace = useTeamStore((state) => state.selectWorkspace);
+  const loadWorkspaces = useTeamStore((state) => state.loadWorkspaces);
 
   return (
     <SettingsSection title="Workspace">
       <div className="space-y-3 px-3 py-3 sm:px-4">
-        {workspaces === null ? (
+        {workspaces === null && workspacesError === null ? (
           <p className="text-sm text-muted-foreground">Loading workspaces…</p>
-        ) : workspaces.length === 0 ? (
+        ) : workspaces !== null && workspaces.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             This member does not belong to a workspace yet.
           </p>
-        ) : (
+        ) : workspaces !== null ? (
           <Select
             value={currentWorkspaceId ?? ""}
             onValueChange={(value) => selectWorkspace(value === "" ? null : value)}
@@ -145,7 +151,14 @@ function WorkspaceSection() {
               ))}
             </SelectPopup>
           </Select>
-        )}
+        ) : null}
+        <TeamErrorNote message={workspacesError} />
+        {workspaces === null && workspacesError !== null ? (
+          <Button size="xs" variant="outline" disabled={busy} onClick={() => void loadWorkspaces()}>
+            {busy ? <Spinner className="size-3.5" /> : null}
+            Retry
+          </Button>
+        ) : null}
       </div>
     </SettingsSection>
   );
@@ -208,7 +221,19 @@ function MembersSection({ role }: { role: TeamRole }) {
                     <Button
                       size="xs"
                       variant="ghost-muted"
-                      onClick={() => void removeMember(member.userId)}
+                      onClick={() => {
+                        const message = `Remove ${member.name} from this workspace?`;
+                        const confirmed = requestConfirmDialog(message, { variant: "destructive" });
+                        if (confirmed === undefined) {
+                          if (!window.confirm(message)) return;
+                        } else {
+                          void confirmed.then((ok) => {
+                            if (ok) void removeMember(member.userId);
+                          });
+                          return;
+                        }
+                        void removeMember(member.userId);
+                      }}
                     >
                       Remove
                     </Button>
@@ -298,6 +323,7 @@ function ArtifactsSection() {
   const artifacts = useTeamStore((state) => state.artifacts);
   const artifactsError = useTeamStore((state) => state.artifactsError);
   const artifactsUnavailable = useTeamStore((state) => state.artifactsUnavailable);
+  const artifactBaseUrl = useTeamStore((state) => state.artifactBaseUrl);
 
   const content = (() => {
     if (artifactsUnavailable) {
@@ -307,8 +333,9 @@ function ArtifactsSection() {
         </p>
       );
     }
-    if (artifacts === null)
+    if (artifacts === null && artifactsError === null)
       return <p className="px-3 py-2 text-sm text-muted-foreground sm:px-4">Loading artifacts…</p>;
+    if (artifacts === null) return null;
     if (artifacts.length === 0) {
       return (
         <p className="px-3 py-2 text-sm text-muted-foreground sm:px-4">
@@ -331,7 +358,7 @@ function ArtifactsSection() {
             </span>
             <Badge variant="secondary">v{artifact.version}</Badge>
             <a
-              href={artifactUrl(artifact.previewPath)}
+              href={artifactUrl(artifactBaseUrl, artifact.previewPath)}
               target="_blank"
               rel="noreferrer"
               aria-label={`Open ${artifact.name}`}
@@ -340,7 +367,7 @@ function ArtifactsSection() {
               <ExternalLinkIcon className="size-4" />
             </a>
             <a
-              href={artifactUrl(artifact.downloadPath)}
+              href={artifactUrl(artifactBaseUrl, artifact.downloadPath)}
               download
               aria-label={`Download ${artifact.name}`}
               className="text-icon-muted hover:text-foreground"

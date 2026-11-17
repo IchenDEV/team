@@ -77,19 +77,63 @@ describe("teamStore", () => {
     expect(useTeamStore.getState().currentWorkspaceId).toBeNull();
   });
 
-  it("clears the whole session on a membership revocation error", async () => {
+  it("keeps the session when only one workspace membership is gone", async () => {
     const { listMembers } = await team();
     vi.mocked(listMembers).mockRejectedValue(
       new TeamApiError({ message: "denied", status: 403, rule: "workspace_membership_required" }),
     );
-    useTeamStore.setState({ token: "token", currentWorkspaceId: "ws_a" });
+    useTeamStore.setState({
+      token: "token",
+      workspaces: [WORKSPACE_A, WORKSPACE_B],
+      currentWorkspaceId: "ws_a",
+      members: [{ userId: "u_1", name: "Ada", role: "Owner" }],
+    });
 
     await useTeamStore.getState().loadMembers();
 
     const state = useTeamStore.getState();
     expect(state.currentWorkspaceId).toBeNull();
-    expect(state.token).toBeNull();
+    expect(state.members).toBeNull();
+    // The gateway session still works for the member's other workspaces.
+    expect(state.token).toBe("token");
     expect(state.workspacesError).toContain("denied");
+  });
+
+  it("clears the session when the token itself is rejected", async () => {
+    const { listMembers } = await team();
+    vi.mocked(listMembers).mockRejectedValue(
+      new TeamApiError({ message: "expired", status: 401, rule: "authentication_required" }),
+    );
+    useTeamStore.setState({
+      token: "token",
+      currentWorkspaceId: "ws_a",
+      workspaces: [WORKSPACE_A],
+    });
+
+    await useTeamStore.getState().loadMembers();
+
+    const state = useTeamStore.getState();
+    expect(state.token).toBeNull();
+    expect(state.workspaces).toBeNull();
+    expect(state.currentWorkspaceId).toBeNull();
+    expect(state.workspacesError).toContain("expired");
+  });
+
+  it("ignores a failure from a workspace that is no longer selected", async () => {
+    const { listMembers } = await team();
+    let reject: (error: unknown) => void = () => undefined;
+    vi.mocked(listMembers).mockImplementation(
+      () => new Promise((_, rejectPromise) => (reject = rejectPromise)),
+    );
+    useTeamStore.setState({ token: "token", currentWorkspaceId: "ws_a" });
+
+    const pending = useTeamStore.getState().loadMembers();
+    useTeamStore.setState({ currentWorkspaceId: "ws_b" });
+    reject(new TeamApiError({ message: "old", status: 404, rule: "artifact_not_found" }));
+    await pending;
+
+    expect(useTeamStore.getState().currentWorkspaceId).toBe("ws_b");
+    expect(useTeamStore.getState().membersError).toBeNull();
   });
 
   it("marks artifacts as unavailable when the environment has no artifact route", async () => {
@@ -104,6 +148,16 @@ describe("teamStore", () => {
     const state = useTeamStore.getState();
     expect(state.artifactsUnavailable).toBe(true);
     expect(state.artifacts).toEqual([]);
+  });
+
+  it("records the environment origin the artifact links must use", async () => {
+    const { listArtifacts } = await team();
+    vi.mocked(listArtifacts).mockResolvedValue([]);
+    useTeamStore.setState({ token: "token", currentWorkspaceId: "ws_a" });
+
+    await useTeamStore.getState().loadArtifacts();
+
+    expect(useTeamStore.getState().artifactBaseUrl).toBe("http://environment.test");
   });
 
   it("disconnect clears the token and every workspace-scoped row", async () => {
@@ -123,5 +177,17 @@ describe("teamStore", () => {
     expect(state.currentWorkspaceId).toBeNull();
     expect(state.workspaces).toBeNull();
     expect(state.members).toBeNull();
+  });
+
+  it("says so when the server logout fails instead of hiding it", async () => {
+    const { logout } = await team();
+    vi.mocked(logout).mockRejectedValue(new Error("gateway down"));
+    useTeamStore.setState({ token: "token" });
+
+    await useTeamStore.getState().disconnect();
+
+    const state = useTeamStore.getState();
+    expect(state.token).toBeNull();
+    expect(state.workspacesError).toContain("gateway down");
   });
 });
