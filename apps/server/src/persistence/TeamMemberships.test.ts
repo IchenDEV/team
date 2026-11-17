@@ -152,6 +152,18 @@ it.effect("keeps an owner through role changes and rolls back invalid updates", 
     );
     const sql = yield* SqlClient.SqlClient;
     assert.deepEqual(yield* sql`SELECT * FROM team_memberships WHERE workspace_id = 'a'`, []);
+    const reused = yield* members
+      .createWorkspace("invited:bob", {
+        id: "a",
+        projectId: ProjectId.make("project-a"),
+        name: "New owner, old runs",
+      })
+      .pipe(Effect.result);
+    assert.equal(
+      reused._tag,
+      "Failure",
+      "Deleted workspace ids must not expose former runs to new owners",
+    );
   }).pipe(Effect.provide(membersLayer)),
 );
 

@@ -221,7 +221,8 @@ const make = Effect.gen(function* () {
           "TeamMembershipRepository.deleteWorkspace",
           Effect.gen(function* () {
             yield* requireOwner(subject, workspaceId);
-            yield* sql`DELETE FROM team_workspaces WHERE id = ${workspaceId}`.pipe(
+            // Keep the binding reserved so a new owner cannot inherit retained native runs.
+            yield* sql`DELETE FROM team_memberships WHERE workspace_id = ${workspaceId}`.pipe(
               Effect.mapError(toPersistenceSqlError("TeamMembershipRepository.deleteWorkspace")),
             );
           }),
