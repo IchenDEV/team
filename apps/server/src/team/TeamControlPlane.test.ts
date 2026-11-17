@@ -12,13 +12,22 @@ import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
 import * as ServerConfig from "../config.ts";
 
 const config: TeamControlPlane.TeamConfig = {
-  workspaces: ["alpha", "beta", "gamma"].map((id) => ({
-    id,
-    projectId: ProjectId.make(id),
-    modelSelection: { instanceId: ProviderInstanceId.make("devReplay"), model: "todo-list" },
-    rpcUrl: "ws://127.0.0.1:1/ws?orchestrationProtocol=2",
-    bearer: "e".repeat(32),
-  })),
+  workspaces: [
+    ...["alpha", "beta", "gamma"].map((id) => ({
+      id,
+      projectId: ProjectId.make(id),
+      modelSelection: { instanceId: ProviderInstanceId.make("devReplay"), model: "todo-list" },
+      rpcUrl: "ws://127.0.0.1:1/ws?orchestrationProtocol=2",
+      bearer: "e".repeat(32),
+    })),
+    {
+      id: "delta",
+      projectId: ProjectId.make("gamma"),
+      modelSelection: { instanceId: ProviderInstanceId.make("devReplay"), model: "todo-list" },
+      rpcUrl: "ws://127.0.0.1:1/ws?orchestrationProtocol=2",
+      bearer: "e".repeat(32),
+    },
+  ],
 };
 const layer = TeamRuntime.layer(config).pipe(
   Layer.provide(ServerConfig.layerTest(process.cwd(), { prefix: "team-rpc-" })),
@@ -255,6 +264,15 @@ it.effect(
       assert.equal(
         rule(yield* client["team.workspace"]({ workspaceId: "gamma" }, owner).pipe(Effect.flip)),
         "workspace_membership_required",
+      );
+      assert.equal(
+        rule(
+          yield* client["team.createWorkspace"](
+            { workspaceId: "delta", name: "Delta" },
+            owner,
+          ).pipe(Effect.flip),
+        ),
+        "workspace_identifier_reserved",
       );
     }).pipe(Effect.provide(layer)),
 );

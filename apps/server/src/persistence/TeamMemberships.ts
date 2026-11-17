@@ -190,11 +190,12 @@ const make = Effect.gen(function* () {
           "TeamMembershipRepository.createWorkspace",
           Effect.gen(function* () {
             const user = yield* requireUser(subject);
-            const bound = yield* sql`SELECT 1 FROM team_workspaces WHERE id = ${input.id}`.pipe(
-              Effect.mapError(
-                toPersistenceSqlError("TeamMembershipRepository.createWorkspaceBinding"),
-              ),
-            );
+            const bound =
+              yield* sql`SELECT 1 FROM team_workspaces WHERE id = ${input.id} OR project_id = ${input.projectId}`.pipe(
+                Effect.mapError(
+                  toPersistenceSqlError("TeamMembershipRepository.createWorkspaceBinding"),
+                ),
+              );
             // Deleting a workspace keeps its id and project binding, so the row outlives it.
             if (bound.length > 0)
               return yield* new TeamMembershipError({ rule: "workspace_identifier_reserved" });

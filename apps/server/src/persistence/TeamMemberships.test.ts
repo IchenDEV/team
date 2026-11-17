@@ -171,6 +171,31 @@ it.effect("keeps an owner through role changes and rolls back invalid updates", 
   }).pipe(Effect.provide(membersLayer)),
 );
 
+it.effect("keeps a deleted workspace's project binding reserved", () =>
+  Effect.gen(function* () {
+    const members = yield* seed;
+    yield* members.deleteWorkspace("invited:alice", "a");
+    assert.equal(
+      membershipRule(
+        yield* members
+          .createWorkspace("invited:bob", {
+            id: "c",
+            projectId: ProjectId.make("project-a"),
+            name: "New id, deleted project binding",
+          })
+          .pipe(Effect.flip),
+      ),
+      "workspace_identifier_reserved",
+    );
+    yield* members.createWorkspace("invited:bob", {
+      id: "c",
+      projectId: ProjectId.make("project-c"),
+      name: "Fresh binding",
+    });
+    assert.equal((yield* members.resolve("invited:bob", "c")).projectId, "project-c");
+  }).pipe(Effect.provide(membersLayer)),
+);
+
 it.effect("enforces unique identities, valid roles and membership foreign keys", () =>
   Effect.gen(function* () {
     const members = yield* seed;

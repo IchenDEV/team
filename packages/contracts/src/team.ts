@@ -37,7 +37,7 @@ export type TeamErrorRule = typeof TeamErrorRule.Type;
 // code is already a descriptive identifier, so it stays as it is.
 const teamErrorGuidance: Readonly<Partial<Record<TeamErrorRule, string>>> = {
   workspace_identifier_reserved:
-    "This workspace identifier is reserved: it is bound to a deleted workspace, or one that already exists, and cannot be reused. Create the workspace under a new identifier from the server configuration.",
+    "This workspace identifier or project binding is reserved: it belongs to a deleted workspace, or to one that already exists, and cannot be reused. Create the workspace under a new identifier from the server configuration.",
 };
 
 export const teamErrorMessage = (rule: TeamErrorRule): string => teamErrorGuidance[rule] ?? rule;
