@@ -231,7 +231,9 @@ export const useTeamStore = create<TeamState>()(
           await get().loadMembers();
           return result;
         } catch (error) {
-          get().handleWorkspaceAccessLost(error, "members", errorMessage(error));
+          if (get().currentWorkspaceId === workspaceId) {
+            get().handleWorkspaceAccessLost(error, "members", errorMessage(error));
+          }
           throw error;
         }
       },

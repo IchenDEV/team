@@ -1,10 +1,6 @@
 import { useEffect, useState } from "react";
 
-import {
-  fetchArtifactContent,
-  type TeamArtifact,
-  type TeamRole,
-} from "@t3tools/client-runtime/team";
+import type { TeamArtifact, TeamRole } from "@t3tools/client-runtime/team";
 import { CopyIcon, DownloadIcon, ExternalLinkIcon } from "lucide-react";
 
 import { requestConfirmDialog } from "../../confirmDialog";
@@ -24,6 +20,10 @@ const formatBytes = (bytes: number): string => {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
+
+/** Artifact paths belong to the environment origin, which is not always the page origin. */
+const artifactUrl = (baseUrl: string | null, path: string): string =>
+  `${(baseUrl ?? window.location.origin).replace(/\/$/, "")}${path}`;
 
 function TeamErrorNote({ message }: { message: string | null }) {
   if (message === null) return null;
@@ -324,36 +324,6 @@ function ArtifactsSection() {
   const artifactsError = useTeamStore((state) => state.artifactsError);
   const artifactsUnavailable = useTeamStore((state) => state.artifactsUnavailable);
   const artifactBaseUrl = useTeamStore((state) => state.artifactBaseUrl);
-  const token = useTeamStore((state) => state.token);
-
-  // A plain link would authenticate as the environment cookie; the member's own session is a
-  // memory-only bearer, so the content is fetched and handed to the browser as an object URL.
-  const openArtifact = (artifact: TeamArtifact, mode: "open" | "download") => {
-    if (token === null || artifactBaseUrl === null) return;
-    void fetchArtifactContent({
-      baseUrl: artifactBaseUrl,
-      path: mode === "open" ? artifact.previewPath : artifact.downloadPath,
-      authorization: token,
-    })
-      .then((blob) => {
-        const url = URL.createObjectURL(blob);
-        if (mode === "open") {
-          window.open(url, "_blank", "noreferrer");
-        } else {
-          const link = document.createElement("a");
-          link.href = url;
-          link.download = artifact.name;
-          link.click();
-        }
-        setTimeout(() => URL.revokeObjectURL(url), 60_000);
-      })
-      .catch((error: unknown) => {
-        toastManager.add({
-          title: `Could not ${mode} ${artifact.name}`,
-          description: error instanceof Error ? error.message : String(error),
-        });
-      });
-  };
 
   const content = (() => {
     if (artifactsUnavailable) {
@@ -387,22 +357,23 @@ function ArtifactsSection() {
               </span>
             </span>
             <Badge variant="secondary">v{artifact.version}</Badge>
-            <Button
-              size="xs"
-              variant="ghost-muted"
+            <a
+              href={artifactUrl(artifactBaseUrl, artifact.previewPath)}
+              target="_blank"
+              rel="noreferrer"
               aria-label={`Open ${artifact.name}`}
-              onClick={() => openArtifact(artifact, "open")}
+              className="text-icon-muted hover:text-foreground"
             >
               <ExternalLinkIcon className="size-4" />
-            </Button>
-            <Button
-              size="xs"
-              variant="ghost-muted"
+            </a>
+            <a
+              href={artifactUrl(artifactBaseUrl, artifact.downloadPath)}
+              download
               aria-label={`Download ${artifact.name}`}
-              onClick={() => openArtifact(artifact, "download")}
+              className="text-icon-muted hover:text-foreground"
             >
               <DownloadIcon className="size-4" />
-            </Button>
+            </a>
           </li>
         ))}
       </ul>
