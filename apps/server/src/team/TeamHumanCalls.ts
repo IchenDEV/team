@@ -244,22 +244,40 @@ export const layer = (options: HumanCallRelayOptions) =>
           if (!entry.endsWith(".json") || entry.endsWith(".state.json")) continue;
           const callId = entry.slice(0, -".json".length);
           if (!CALL_ID_PATTERN.test(callId)) continue;
-          const raw = yield* fs
-            .readFileString(`${dir}/${entry}`)
-            .pipe(Effect.orElseSucceed(() => ""));
-          if (raw.length === 0) continue;
-          const parsed = yield* decodeUnknownJson(raw).pipe(Effect.option);
-          if (parsed._tag === "None") {
-            yield* reject(workspaceId, callId, "invalid_json");
+          const path = `${dir}/${entry}`;
+          // A run owns this directory: it can leave a FIFO or a directory named like a
+          // request. Only a regular file is read, and one read never stalls the tick.
+          const info = yield* fs.stat(path).pipe(Effect.option);
+          if (info._tag === "None" || info.value.type !== "File") {
+            yield* reject(workspaceId, callId, "not_a_regular_file").pipe(Effect.ignore);
             continue;
           }
-          const request = yield* decodeRequest(parsed.value).pipe(Effect.option);
-          if (request._tag === "None") {
-            yield* reject(workspaceId, callId, "invalid_request");
-            continue;
-          }
-          yield* accept(workspaceId, callId, request.value);
+          // One file can never stop the scan: its own failure settles that file only,
+          // so the next tick does not read it again and expiry keeps running.
+          yield* handleRequest(workspaceId, callId, path).pipe(
+            Effect.timeoutOption("5 seconds"),
+            Effect.catchCause((cause) =>
+              Effect.logWarning("human_call request failed", { workspaceId, callId, cause }).pipe(
+                Effect.andThen(settleFile(workspaceId, callId, "rejected")),
+              ),
+            ),
+            Effect.ignore,
+          );
         }
+      });
+
+      const handleRequest = Effect.fn("HumanCallRelay.handleRequest")(function* (
+        workspaceId: string,
+        callId: string,
+        path: string,
+      ) {
+        const raw = yield* fs.readFileString(path);
+        if (raw.length === 0) return yield* reject(workspaceId, callId, "empty_request");
+        const parsed = yield* decodeUnknownJson(raw).pipe(Effect.option);
+        if (parsed._tag === "None") return yield* reject(workspaceId, callId, "invalid_json");
+        const request = yield* decodeRequest(parsed.value).pipe(Effect.option);
+        if (request._tag === "None") return yield* reject(workspaceId, callId, "invalid_request");
+        yield* accept(workspaceId, callId, request.value);
       });
 
       const expireDue = Effect.gen(function* () {
@@ -289,7 +307,8 @@ export const layer = (options: HumanCallRelayOptions) =>
           options.workspaceIds,
           (workspaceId) =>
             scanWorkspace(workspaceId).pipe(
-              Effect.catch((cause) =>
+              // A defect (not a typed failure) must not skip the others or the deadline pass.
+              Effect.catchCause((cause) =>
                 Effect.logError("human_call workspace scan failed", { workspaceId, cause }),
               ),
             ),
