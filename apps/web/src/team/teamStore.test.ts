@@ -18,6 +18,8 @@ vi.mock("@t3tools/client-runtime/team", async (importOriginal) => {
     listWorkspaces: vi.fn(),
     listMembers: vi.fn(),
     listArtifacts: vi.fn(),
+    listHumanCalls: vi.fn(),
+    answerHumanCall: vi.fn(),
     inviteMember: vi.fn(),
     logout: vi.fn(),
   };
@@ -279,5 +281,55 @@ describe("teamStore", () => {
     const state = useTeamStore.getState();
     expect(state.token).toBeNull();
     expect(state.workspacesError).toContain("gateway down");
+  });
+});
+
+describe("human call inbox", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useTeamStore.setState({
+      gatewayUrl: "http://gateway.test",
+      token: "token-1",
+      workspaces: [WORKSPACE_A],
+      currentWorkspaceId: WORKSPACE_A.id,
+      humanCalls: null,
+      humanCallsError: null,
+    });
+  });
+
+  it("lists only the calls the gateway returns and answers one by id", async () => {
+    const api = await team();
+    const call = {
+      id: "call-1",
+      workspaceId: WORKSPACE_A.id,
+      runId: `team.${WORKSPACE_A.id}.u_2.cmd`,
+      caller: { userId: "u_2", name: "Bob" },
+      question: "Which branch should I cut?",
+      options: ["main"],
+      contextLink: null,
+      raisedAt: new Date("2026-11-18T00:00:00.000Z"),
+      expiresAt: null,
+    };
+    vi.mocked(api.listHumanCalls).mockResolvedValue([call]);
+    vi.mocked(api.answerHumanCall).mockResolvedValue(undefined);
+
+    await useTeamStore.getState().loadHumanCalls();
+    expect(useTeamStore.getState().humanCalls).toHaveLength(1);
+    expect(useTeamStore.getState().humanCalls?.[0]?.question).toBe("Which branch should I cut?");
+
+    const answered = await useTeamStore.getState().answerHumanCall("call-1", "release/2.4");
+    expect(answered).toBe(true);
+    expect(api.answerHumanCall).toHaveBeenCalledWith(
+      { baseUrl: "http://gateway.test", token: "token-1" },
+      { workspaceId: WORKSPACE_A.id, callId: "call-1", answer: "release/2.4" },
+    );
+  });
+
+  it("keeps the failing answer visible instead of dropping the call", async () => {
+    const api = await team();
+    vi.mocked(api.answerHumanCall).mockRejectedValue(new Error("call expired"));
+    const answered = await useTeamStore.getState().answerHumanCall("call-1", "late");
+    expect(answered).toBe(false);
+    expect(useTeamStore.getState().humanCallsError).toBe("call expired");
   });
 });

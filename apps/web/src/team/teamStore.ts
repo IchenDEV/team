@@ -3,7 +3,9 @@ import {
   isSessionLost,
   isTeamApiError,
   isWorkspaceAccessLost,
+  answerHumanCall,
   listArtifacts,
+  listHumanCalls,
   listMembers,
   listWorkspaces,
   inviteMember,
@@ -12,6 +14,7 @@ import {
   removeMember,
   setMemberRole,
   type TeamArtifact,
+  type TeamHumanCall,
   type TeamMember,
   type TeamRole,
   type TeamWorkspaceAccess,
@@ -55,6 +58,9 @@ export interface TeamState {
   readonly artifacts: ReadonlyArray<TeamArtifact> | null;
   readonly artifactsError: string | null;
   readonly artifactsUnavailable: boolean;
+  /** Calls addressed to the signed-in member in the selected workspace. */
+  readonly humanCalls: ReadonlyArray<TeamHumanCall> | null;
+  readonly humanCallsError: string | null;
   /** Origin of the environment that serves the artifact route; links must not use the page origin. */
   readonly artifactBaseUrl: string | null;
   readonly busy: boolean;
@@ -65,6 +71,8 @@ export interface TeamState {
   readonly selectWorkspace: (workspaceId: string | null) => void;
   readonly loadMembers: () => Promise<void>;
   readonly loadArtifacts: () => Promise<void>;
+  readonly loadHumanCalls: () => Promise<void>;
+  readonly answerHumanCall: (callId: string, answer: string) => Promise<boolean>;
   readonly invite: (input: {
     name: string;
     role: TeamRole;
@@ -84,6 +92,8 @@ const clearWorkspaceScoped = () => ({
   artifacts: null,
   artifactsError: null,
   artifactsUnavailable: false,
+  humanCalls: null,
+  humanCallsError: null,
 });
 
 const clearSession = () => ({
@@ -215,6 +225,36 @@ export const useTeamStore = create<TeamState>()(
           // The members plane decides who belongs to the workspace; an artifact denial only says
           // this environment cannot serve that member's artifacts, so it must not drop the choice.
           set({ artifactsError: errorMessage(error) });
+        }
+      },
+
+      loadHumanCalls: async () => {
+        const state = get();
+        const connection = connectionOf(state);
+        const workspaceId = state.currentWorkspaceId;
+        if (connection === null || workspaceId === null) return;
+        set({ humanCallsError: null });
+        try {
+          const humanCalls = await listHumanCalls(connection, workspaceId);
+          if (get().currentWorkspaceId === workspaceId) set({ humanCalls });
+        } catch (error) {
+          if (get().currentWorkspaceId !== workspaceId) return;
+          set({ humanCallsError: errorMessage(error) });
+        }
+      },
+
+      answerHumanCall: async (callId, answer) => {
+        const state = get();
+        const connection = connectionOf(state);
+        const workspaceId = state.currentWorkspaceId;
+        if (connection === null || workspaceId === null) return false;
+        try {
+          await answerHumanCall(connection, { workspaceId, callId, answer });
+          await get().loadHumanCalls();
+          return true;
+        } catch (error) {
+          set({ humanCallsError: errorMessage(error) });
+          return false;
         }
       },
 

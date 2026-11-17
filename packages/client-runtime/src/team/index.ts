@@ -1,5 +1,6 @@
 import {
   TeamError,
+  TeamHumanCall as TeamHumanCallSchema,
   TeamMember as TeamMemberSchema,
   TeamRole as TeamRoleSchema,
   TeamRpcGroup,
@@ -21,6 +22,7 @@ export * from "./artifacts.ts";
 export * from "./errors.ts";
 
 export type TeamMember = typeof TeamMemberSchema.Type;
+export type TeamHumanCall = TeamHumanCallSchema;
 export type TeamRole = typeof TeamRoleSchema.Type;
 export type TeamWorkspaceAccess = typeof TeamWorkspaceAccessSchema.Type;
 
@@ -133,6 +135,25 @@ export function setMemberRole(
   input: { readonly workspaceId: string; readonly userId: string; readonly role: TeamRole },
 ): Promise<void> {
   return request(connection, (client) => client["team.setMember"](input));
+}
+
+/**
+ * Calls addressed to the signed-in member, newest last. A pending call is the whole
+ * inbox: there is no broadcast, so nobody else's call appears here.
+ */
+export function listHumanCalls(
+  connection: TeamGatewayConnection,
+  workspaceId: string,
+): Promise<ReadonlyArray<TeamHumanCall>> {
+  return request(connection, (client) => client["team.humanCalls"]({ workspaceId }));
+}
+
+/** Answers one call; the run that asked continues with this text verbatim. */
+export function answerHumanCall(
+  connection: TeamGatewayConnection,
+  input: { readonly workspaceId: string; readonly callId: string; readonly answer: string },
+): Promise<void> {
+  return request(connection, (client) => client["team.answerHumanCall"](input));
 }
 
 /** Owner-only. */
