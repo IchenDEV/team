@@ -192,7 +192,7 @@ export const useTeamStore = create<TeamState>()((set, get) => ({
     if (workspaceId === null || connection === null) return;
     set({ artifactsError: null, artifactsUnavailable: false });
     try {
-      const request = await teamArtifactRequest(connection.token);
+      const request = await teamArtifactRequest(connection.baseUrl, connection.token);
       const artifacts = await listArtifacts({ ...request, workspaceId });
       if (get().currentWorkspaceId === workspaceId) {
         set({ artifacts, artifactBaseUrl: request.baseUrl });
