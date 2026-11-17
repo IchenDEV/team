@@ -429,6 +429,10 @@ export class SessionStore extends Context.Service<
     readonly revoke: (
       sessionId: AuthSessionId,
     ) => Effect.Effect<boolean, SessionCredentialInternalError>;
+    /** Removes the row outright, for a login that rejects the session it just issued. */
+    readonly delete: (
+      sessionId: AuthSessionId,
+    ) => Effect.Effect<boolean, SessionCredentialInternalError>;
     readonly revokeAllExcept: (
       sessionId: AuthSessionId,
     ) => Effect.Effect<number, SessionCredentialInternalError>;
@@ -1026,6 +1030,23 @@ const make = Effect.gen(function* () {
     },
   );
 
+  const deleteSession: SessionStore["Service"]["delete"] = Effect.fn("SessionStore.delete")(
+    function* (sessionId) {
+      const deleted = yield* authSessions
+        .delete({ sessionId })
+        .pipe(Effect.mapError((cause) => new SessionRevocationError({ sessionId, cause })));
+      if (deleted) {
+        yield* Ref.update(connectedSessionsRef, (current) => {
+          const next = new Map(current);
+          next.delete(sessionId);
+          return next;
+        });
+        yield* emitRemoved(sessionId);
+      }
+      return deleted;
+    },
+  );
+
   const proofKeyThumbprintOf: SessionStore["Service"]["proofKeyThumbprintOf"] = (sessionId) =>
     authSessions
       .getProofKeyThumbprint({ sessionId })
@@ -1153,6 +1174,7 @@ const make = Effect.gen(function* () {
       return Stream.fromPubSub(changesPubSub);
     },
     revoke,
+    delete: deleteSession,
     revokeAllExcept,
     proofKeyThumbprintOf,
     revokeByProofKey,

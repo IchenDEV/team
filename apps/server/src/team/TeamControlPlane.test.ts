@@ -10,6 +10,7 @@ import * as TeamRuntime from "./TeamRuntime.ts";
 import * as TeamMemberships from "../persistence/TeamMemberships.ts";
 import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
 import * as ServerConfig from "../config.ts";
+import * as SqlClient from "effect/sql/SqlClient";
 
 const config: TeamControlPlane.TeamConfig = {
   workspaces: ["alpha", "beta", "gamma"].map((id) => ({
@@ -46,12 +47,40 @@ const setup = Effect.gen(function* () {
     const token = yield* client["team.login"]({ credential: invitation.credential });
     return { headers: { authorization: `Bearer ${token.access_token}` } };
   });
-  return { repository, client, login, owner: yield* login("owner") };
+  return { repository, client, auth, login, owner: yield* login("owner") };
 });
 const rule = (error: unknown) => {
   assert.instanceOf(error, TeamError);
   return error.rule;
 };
+
+it.effect("keeps no session row for a rejected login", () =>
+  Effect.gen(function* () {
+    const { auth, client, login } = yield* setup;
+    const sql = yield* SqlClient.SqlClient;
+    const count = Effect.fn("test.sessionRowCount")(function* () {
+      const rows = yield* sql<{ count: number }>`SELECT COUNT(*) AS count FROM auth_sessions`;
+      return rows[0]?.count ?? 0;
+    });
+    const before = yield* count();
+    for (const [subject, expected] of [
+      [TeamControlPlane.userSubject("outsider"), "invited_user_required"],
+      ["mcp-client", "authentication_required"],
+    ] as const) {
+      const invitation = yield* auth.createPairingLink({
+        subject,
+        scopes: ["orchestration:read"],
+      });
+      assert.equal(
+        rule(yield* client["team.login"]({ credential: invitation.credential }).pipe(Effect.flip)),
+        expected,
+      );
+      assert.equal(yield* count(), before, `${expected} must leave no session row`);
+    }
+    yield* login("alice");
+    assert.equal(yield* count(), before + 1, "an accepted login still issues one session");
+  }).pipe(Effect.provide(layer)),
+);
 
 it.effect("cannot mint or re-mint an identity that exists in another workspace", () =>
   Effect.gen(function* () {
