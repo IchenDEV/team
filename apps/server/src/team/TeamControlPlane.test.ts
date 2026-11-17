@@ -1,70 +1,212 @@
 import { assert, it } from "@effect/vitest";
-import { ProjectId, ProviderInstanceId, TeamRpcGroup } from "@t3tools/contracts";
+import * as NodeServices from "@effect/platform-node/NodeServices";
+import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
+import { ProjectId, ProviderInstanceId, TeamRpcGroup, TeamError } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as RpcTest from "effect/rpc/RpcTest";
 import * as TeamControlPlane from "./TeamControlPlane.ts";
+import * as TeamRuntime from "./TeamRuntime.ts";
+import * as TeamMemberships from "../persistence/TeamMemberships.ts";
+import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
+import * as ServerConfig from "../config.ts";
 
-it.effect(
-  "enforces identity, workspace membership and Viewer guards at both RPC entry points",
-  () =>
-    Effect.gen(function* () {
-      let cases = 0;
-      for (const role of ["Owner", "Editor", "Viewer"] as const) {
-        const config: TeamControlPlane.TeamConfig = {
-          users: [
-            { id: "alice", token: "a".repeat(32) },
-            { id: "bob", token: "b".repeat(32) },
-          ],
-          memberships: [
-            { userId: "alice", workspaceId: "alpha", role },
-            { userId: "bob", workspaceId: "beta", role },
-          ],
-          workspaces: ["alpha", "beta"].map((id) => ({
-            id,
-            projectId: ProjectId.make(id),
-            modelSelection: { instanceId: ProviderInstanceId.make("devReplay"), model: "showcase" },
-            rpcUrl: "ws://127.0.0.1:1/ws?orchestrationProtocol=2",
-            bearer: "e".repeat(32),
-          })),
-        };
-        const client = yield* RpcTest.makeClient(TeamRpcGroup).pipe(
-          Effect.provide(
-            TeamControlPlane.handlers.pipe(Layer.provide(TeamControlPlane.layer(config))),
-          ),
+const config: TeamControlPlane.TeamConfig = {
+  workspaces: ["alpha", "beta", "gamma"].map((id) => ({
+    id,
+    projectId: ProjectId.make(id),
+    modelSelection: { instanceId: ProviderInstanceId.make("devReplay"), model: "todo-list" },
+    rpcUrl: "ws://127.0.0.1:1/ws?orchestrationProtocol=2",
+    bearer: "e".repeat(32),
+  })),
+};
+const layer = TeamRuntime.layer(config).pipe(
+  Layer.provide(ServerConfig.layerTest(process.cwd(), { prefix: "team-rpc-" })),
+  Layer.provide(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)),
+);
+const setup = Effect.gen(function* () {
+  const repository = yield* TeamMemberships.TeamMembershipRepository;
+  const auth = yield* EnvironmentAuth.EnvironmentAuth;
+  const client = yield* RpcTest.makeClient(TeamRpcGroup).pipe(
+    Effect.provide(TeamControlPlane.handlers),
+  );
+  for (const id of ["owner", "alice", "bob"])
+    yield* repository.inviteUser({ id, subject: TeamControlPlane.userSubject(id), name: id });
+  for (const id of ["alpha", "beta"])
+    yield* repository.createWorkspace(TeamControlPlane.userSubject("owner"), {
+      id,
+      projectId: ProjectId.make(id),
+      name: id,
+    });
+  const login = Effect.fn("test.login")(function* (id: string) {
+    const invitation = yield* auth.createPairingLink({
+      subject: TeamControlPlane.userSubject(id),
+      scopes: ["orchestration:read"],
+    });
+    const token = yield* client["team.login"]({ credential: invitation.credential });
+    return { headers: { authorization: `Bearer ${token.access_token}` } };
+  });
+  return { repository, client, login, owner: yield* login("owner") };
+});
+const rule = (error: unknown) => {
+  assert.instanceOf(error, TeamError);
+  return error.rule;
+};
+
+it.effect("cannot mint another workspace's existing identity through invitations", () =>
+  Effect.gen(function* () {
+    const { repository, client, login, owner } = yield* setup;
+    yield* repository.setMember(TeamControlPlane.userSubject("owner"), "beta", "alice", "Owner");
+    yield* repository.removeMember(TeamControlPlane.userSubject("alice"), "beta", "owner");
+    const alice = yield* login("alice");
+    for (const userId of ["owner", "alice"]) {
+      const invitation = yield* client["team.invite"](
+        { workspaceId: "beta", userId, name: "Impersonated", role: "Owner" },
+        alice,
+      ).pipe(Effect.result);
+      assert.equal(invitation._tag, "Failure", "Invitations must not mint an existing identity");
+      if (invitation._tag === "Failure")
+        assert.equal(rule(invitation.failure), "user_already_invited");
+    }
+    assert.deepEqual(
+      (yield* client["team.workspaces"](undefined, owner)).map((workspace) => workspace.id),
+      ["alpha"],
+    );
+    yield* client["team.setMember"](
+      { workspaceId: "beta", userId: "owner", role: "Viewer" },
+      alice,
+    );
+    assert.equal((yield* client["team.workspace"]({ workspaceId: "beta" }, owner)).role, "Viewer");
+  }).pipe(Effect.provide(layer)),
+);
+
+it.effect("checks current identity and every workspace entry point across all roles", () =>
+  Effect.gen(function* () {
+    const { repository, client, login, owner } = yield* setup;
+    const alice = yield* login("alice");
+    const bob = yield* login("bob");
+    let cases = 0;
+    for (const role of ["Owner", "Editor", "Viewer"] as const) {
+      yield* repository.setMember(TeamControlPlane.userSubject("owner"), "alpha", "alice", role);
+      yield* repository.setMember(TeamControlPlane.userSubject("owner"), "beta", "bob", role);
+      for (const [id, options] of [
+        ["alice", alice],
+        ["bob", bob],
+      ] as const) {
+        assert.deepEqual(
+          (yield* client["team.workspaces"](undefined, options)).map((entry) => entry.id),
+          [id === "alice" ? "alpha" : "beta"],
         );
-        for (const user of config.users) {
-          for (const workspaceId of ["alpha", "beta"]) {
-            for (const authenticated of [false, true]) {
-              const headers = authenticated ? { authorization: `Bearer ${user.token}` } : {};
-              const own = (user.id === "alice") === (workspaceId === "alpha");
-              const commonRule = !authenticated
-                ? "authentication_required"
-                : !own
-                  ? "workspace_membership_required"
-                  : undefined;
-              const read = yield* Effect.flip(
-                client["team.read"](
-                  { workspaceId, runId: "team.other.alice.command" },
-                  { headers },
-                ),
-              );
-              assert.equal(read.rule, commonRule ?? "run_not_found");
-              cases++;
-              if (commonRule !== undefined || role === "Viewer") {
-                const start = yield* Effect.flip(
-                  client["team.start"](
-                    { workspaceId, commandId: "command", text: "harmless" },
-                    { headers },
-                  ),
-                );
-                assert.equal(start.rule, commonRule ?? "viewer_execution_forbidden");
+        for (const workspaceId of ["alpha", "beta"]) {
+          for (const authenticated of [false, true]) {
+            const headers = authenticated ? options : {};
+            const own = (id === "alice") === (workspaceId === "alpha");
+            const denied = !authenticated
+              ? "authentication_required"
+              : !own
+                ? "workspace_membership_required"
+                : undefined;
+            const readInput = { workspaceId, runId: "team.other.alice.command" };
+            assert.equal(
+              rule(yield* client["team.read"](readInput, headers).pipe(Effect.flip)),
+              denied ?? "run_not_found",
+            );
+            cases++;
+            if (denied) {
+              for (const request of [
+                client["team.workspace"]({ workspaceId }, headers),
+                client["team.members"]({ workspaceId }, headers),
+                client["team.renameWorkspace"]({ workspaceId, name: "changed" }, headers),
+                client["team.deleteWorkspace"]({ workspaceId }, headers),
+                client["team.setMember"]({ workspaceId, userId: id, role: "Owner" }, headers),
+                client["team.removeMember"]({ workspaceId, userId: "owner" }, headers),
+              ]) {
+                assert.equal(rule(yield* request.pipe(Effect.flip)), denied);
                 cases++;
               }
+            }
+            if (denied || role === "Viewer") {
+              assert.equal(
+                rule(
+                  yield* client["team.start"](
+                    { workspaceId, commandId: "command", text: "harmless" },
+                    headers,
+                  ).pipe(Effect.flip),
+                ),
+                denied ?? "viewer_execution_forbidden",
+              );
+              cases++;
             }
           }
         }
       }
-      assert.equal(cases, 44);
-    }),
+    }
+    assert.equal(cases, 152);
+    assert.equal((yield* client["team.workspace"]({ workspaceId: "alpha" }, owner)).role, "Owner");
+  }).pipe(Effect.provide(layer)),
+);
+
+it.effect(
+  "supports invited membership CRUD, role changes and logout through existing sessions",
+  () =>
+    Effect.gen(function* () {
+      const { client, owner } = yield* setup;
+      yield* client["team.createWorkspace"]({ workspaceId: "gamma", name: "Gamma" }, owner);
+      yield* client["team.renameWorkspace"]({ workspaceId: "gamma", name: "Renamed" }, owner);
+      assert.equal(
+        (yield* client["team.workspace"]({ workspaceId: "gamma" }, owner)).name,
+        "Renamed",
+      );
+      const invited = yield* client["team.invite"](
+        { workspaceId: "gamma", userId: "new-user", name: "Synthetic", role: "Editor" },
+        owner,
+      );
+      const token = yield* client["team.login"](invited);
+      assert.equal(
+        rule(yield* client["team.login"](invited).pipe(Effect.flip)),
+        "authentication_required",
+      );
+      const user = { headers: { authorization: `Bearer ${token.access_token}` } };
+      for (const role of ["Editor", "Viewer"] as const) {
+        yield* client["team.setMember"]({ workspaceId: "gamma", userId: "new-user", role }, owner);
+        assert.equal((yield* client["team.workspace"]({ workspaceId: "gamma" }, user)).role, role);
+        assert.equal(
+          rule(
+            yield* client["team.invite"](
+              { workspaceId: "gamma", userId: "outsider", name: "Denied", role: "Owner" },
+              user,
+            ).pipe(Effect.flip),
+          ),
+          "owner_required",
+        );
+        assert.equal(
+          rule(
+            yield* client["team.setMember"](
+              { workspaceId: "gamma", userId: "new-user", role: "Owner" },
+              user,
+            ).pipe(Effect.flip),
+          ),
+          "owner_required",
+        );
+      }
+      yield* client["team.removeMember"]({ workspaceId: "gamma", userId: "new-user" }, owner);
+      assert.equal(
+        rule(yield* client["team.workspace"]({ workspaceId: "gamma" }, user).pipe(Effect.flip)),
+        "workspace_membership_required",
+      );
+      yield* client["team.setMember"](
+        { workspaceId: "gamma", userId: "new-user", role: "Editor" },
+        owner,
+      );
+      yield* client["team.logout"](undefined, user);
+      assert.equal(
+        rule(yield* client["team.workspaces"](undefined, user).pipe(Effect.flip)),
+        "authentication_required",
+      );
+      yield* client["team.deleteWorkspace"]({ workspaceId: "gamma" }, owner);
+      assert.deepEqual(
+        (yield* client["team.workspaces"](undefined, owner)).map((entry) => entry.id),
+        ["alpha", "beta"],
+      );
+    }).pipe(Effect.provide(layer)),
 );
