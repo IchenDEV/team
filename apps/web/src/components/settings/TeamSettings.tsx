@@ -1,9 +1,19 @@
 import { useEffect, useState } from "react";
 
-import type { TeamArtifact, TeamRole } from "@t3tools/client-runtime/team";
+import {
+  fetchArtifactContent,
+  isSessionLost,
+  isWorkspaceAccessLost,
+  type TeamArtifact,
+  type TeamRole,
+} from "@t3tools/client-runtime/team";
 import { CopyIcon, DownloadIcon, ExternalLinkIcon } from "lucide-react";
 
 import { requestConfirmDialog } from "../../confirmDialog";
+import {
+  readPrimaryEnvironmentTarget,
+  resolvePrimaryEnvironmentHttpUrl,
+} from "../../environments/primary/target";
 import { useTeamStore } from "../../team/teamStore";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -21,10 +31,6 @@ const formatBytes = (bytes: number): string => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-/** Artifact paths belong to the environment origin, which is not always the page origin. */
-const artifactUrl = (baseUrl: string | null, path: string): string =>
-  `${(baseUrl ?? window.location.origin).replace(/\/$/, "")}${path}`;
-
 function TeamErrorNote({ message }: { message: string | null }) {
   if (message === null) return null;
   return (
@@ -35,33 +41,42 @@ function TeamErrorNote({ message }: { message: string | null }) {
 }
 
 function ConnectSection() {
-  const gatewayUrl = useTeamStore((state) => state.gatewayUrl);
   const connect = useTeamStore((state) => state.connect);
   const busy = useTeamStore((state) => state.busy);
   const workspacesError = useTeamStore((state) => state.workspacesError);
-  const [url, setUrl] = useState(gatewayUrl);
   const [credential, setCredential] = useState("");
+  // The membership plane lives on the environment the app is connected to. A desktop with its
+  // local environment disabled has none: say so instead of resolving an address that throws.
+  const environmentUrl =
+    readPrimaryEnvironmentTarget() === null
+      ? null
+      : resolvePrimaryEnvironmentHttpUrl("/").replace(/\/+$/, "");
+
+  if (environmentUrl === null) {
+    return (
+      <SettingsSection title="Team">
+        <p className="px-3 py-3 text-sm text-muted-foreground sm:px-4">
+          Team membership lives on an environment. Connect one, or enable the local environment, to
+          sign in here.
+        </p>
+      </SettingsSection>
+    );
+  }
 
   return (
-    <SettingsSection title="Team gateway">
+    <SettingsSection title="Team">
       <form
         className="space-y-3 px-3 py-3 sm:px-4"
         onSubmit={(event) => {
           event.preventDefault();
-          if (url.trim() && credential.trim()) void connect(url.trim(), credential);
+          if (credential.trim()) void connect(environmentUrl, credential);
         }}
       >
         <p className="text-sm text-muted-foreground">
-          Connect to a team gateway with the invitation credential the workspace Owner gave you.
+          Connect to this environment with the invitation credential the workspace Owner gave you.
         </p>
+        <p className="truncate text-xs text-muted-foreground">{environmentUrl}</p>
         <div className="flex flex-wrap items-center gap-2">
-          <Input
-            value={url}
-            onChange={(event) => setUrl(event.target.value)}
-            placeholder="Gateway URL"
-            aria-label="Team gateway URL"
-            className="w-full sm:w-64"
-          />
           <Input
             value={credential}
             onChange={(event) => setCredential(event.target.value)}
@@ -70,11 +85,7 @@ function ConnectSection() {
             type="password"
             className="w-full sm:w-64"
           />
-          <Button
-            type="submit"
-            variant="outline"
-            disabled={busy || !url.trim() || !credential.trim()}
-          >
+          <Button type="submit" variant="outline" disabled={busy || !credential.trim()}>
             {busy ? <Spinner className="size-3.5" /> : null}
             Connect
           </Button>
@@ -99,7 +110,7 @@ function SessionSection() {
 
   return (
     <SettingsSection
-      title="Team gateway"
+      title="Team"
       headerAction={
         <Button size="xs" variant="ghost-muted" onClick={() => void disconnect()}>
           Disconnect
@@ -324,6 +335,63 @@ function ArtifactsSection() {
   const artifactsError = useTeamStore((state) => state.artifactsError);
   const artifactsUnavailable = useTeamStore((state) => state.artifactsUnavailable);
   const artifactBaseUrl = useTeamStore((state) => state.artifactBaseUrl);
+  const token = useTeamStore((state) => state.token);
+  const currentWorkspaceId = useTeamStore((state) => state.currentWorkspaceId);
+  const [preview, setPreview] = useState<{
+    workspaceId: string | null;
+    name: string;
+    url: string;
+  } | null>(null);
+
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- releases the preview blob URL held outside React
+  useEffect(() => {
+    return () => {
+      if (preview !== null) URL.revokeObjectURL(preview.url);
+    };
+  }, [preview]);
+
+  const closePreview = () => {
+    setPreview((current) => {
+      if (current !== null) URL.revokeObjectURL(current.url);
+      return null;
+    });
+  };
+
+  // The member session is a bearer, which a plain link cannot carry. Content is fetched with it:
+  // preview renders in a sandboxed frame (never a top-level navigation), download saves the blob.
+  const openArtifact = (artifact: TeamArtifact, mode: "open" | "download") => {
+    if (token === null || artifactBaseUrl === null) return;
+    void fetchArtifactContent({
+      baseUrl: artifactBaseUrl,
+      path: mode === "open" ? artifact.previewPath : artifact.downloadPath,
+      authorization: token,
+    })
+      .then((blob) => {
+        const url = URL.createObjectURL(blob);
+        if (mode === "open") {
+          setPreview((current) => {
+            if (current !== null) URL.revokeObjectURL(current.url);
+            return { workspaceId: currentWorkspaceId, name: artifact.name, url };
+          });
+          return;
+        }
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = artifact.name;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      })
+      .catch((error: unknown) => {
+        if (isSessionLost(error) || isWorkspaceAccessLost(error)) {
+          useTeamStore.getState().handleWorkspaceAccessLost(error, "artifacts", String(error));
+          return;
+        }
+        toastManager.add({
+          title: `Could not ${mode} ${artifact.name}`,
+          description: error instanceof Error ? error.message : String(error),
+        });
+      });
+  };
 
   const content = (() => {
     if (artifactsUnavailable) {
@@ -357,23 +425,22 @@ function ArtifactsSection() {
               </span>
             </span>
             <Badge variant="secondary">v{artifact.version}</Badge>
-            <a
-              href={artifactUrl(artifactBaseUrl, artifact.previewPath)}
-              target="_blank"
-              rel="noreferrer"
+            <Button
+              size="xs"
+              variant="ghost-muted"
               aria-label={`Open ${artifact.name}`}
-              className="text-icon-muted hover:text-foreground"
+              onClick={() => openArtifact(artifact, "open")}
             >
               <ExternalLinkIcon className="size-4" />
-            </a>
-            <a
-              href={artifactUrl(artifactBaseUrl, artifact.downloadPath)}
-              download
+            </Button>
+            <Button
+              size="xs"
+              variant="ghost-muted"
               aria-label={`Download ${artifact.name}`}
-              className="text-icon-muted hover:text-foreground"
+              onClick={() => openArtifact(artifact, "download")}
             >
               <DownloadIcon className="size-4" />
-            </a>
+            </Button>
           </li>
         ))}
       </ul>
@@ -384,6 +451,23 @@ function ArtifactsSection() {
     <SettingsSection title="Shared artifacts">
       {content}
       <TeamErrorNote message={artifactsError} />
+      {preview !== null && preview.workspaceId === currentWorkspaceId ? (
+        <div className="space-y-2 px-3 py-3 sm:px-4">
+          <div className="flex items-center justify-between gap-2">
+            <span className="truncate text-sm">{preview.name}</span>
+            <Button size="xs" variant="ghost-muted" onClick={closePreview}>
+              Close
+            </Button>
+          </div>
+          {/* Sandboxed: artifact content runs on an opaque origin, never on the app origin. */}
+          <iframe
+            title={`Preview of ${preview.name}`}
+            src={preview.url}
+            sandbox="allow-scripts"
+            className="h-80 w-full rounded-md border border-border/60 bg-background"
+          />
+        </div>
+      ) : null}
     </SettingsSection>
   );
 }

@@ -153,7 +153,7 @@ describe("teamStore", () => {
     expect(state.artifacts).toEqual([]);
   });
 
-  it("keeps the workspace selected when only the artifact route denies the member", async () => {
+  it("drops the workspace but keeps the session when the artifact route denies the member", async () => {
     const { listArtifacts } = await team();
     vi.mocked(listArtifacts).mockRejectedValue(
       new TeamApiError({
@@ -165,15 +165,15 @@ describe("teamStore", () => {
     useTeamStore.setState({
       token: "token",
       currentWorkspaceId: "ws_a",
-      workspaces: [WORKSPACE_A],
+      workspaces: [WORKSPACE_A, WORKSPACE_B],
     });
 
     await useTeamStore.getState().loadArtifacts();
 
     const state = useTeamStore.getState();
-    expect(state.currentWorkspaceId).toBe("ws_a");
+    expect(state.currentWorkspaceId).toBeNull();
     expect(state.token).toBe("token");
-    expect(state.artifactsError).toContain("no team user here");
+    expect(state.workspacesError).toContain("no team user here");
   });
 
   it("reads artifacts with the team bearer on the environment origin", async () => {
@@ -252,6 +252,25 @@ describe("teamStore", () => {
     expect(state.currentWorkspaceId).toBeNull();
     expect(state.token).toBe("token");
     expect(state.workspaces?.map((workspace) => workspace.id)).toEqual(["ws_b"]);
+  });
+
+  it("clears the session when the artifact route rejects the token", async () => {
+    const { listArtifacts } = await team();
+    vi.mocked(listArtifacts).mockRejectedValue(
+      new TeamApiError({ message: "expired", status: 401, rule: "authentication_required" }),
+    );
+    useTeamStore.setState({
+      token: "token",
+      currentWorkspaceId: "ws_a",
+      workspaces: [WORKSPACE_A],
+    });
+
+    await useTeamStore.getState().loadArtifacts();
+
+    const state = useTeamStore.getState();
+    expect(state.token).toBeNull();
+    expect(state.currentWorkspaceId).toBeNull();
+    expect(state.workspacesError).toContain("expired");
   });
 
   it("disconnect clears the token and every workspace-scoped row", async () => {
