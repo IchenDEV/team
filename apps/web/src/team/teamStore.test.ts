@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { useTeamStore } from "./teamStore";
 
 vi.mock("./teamClient", () => ({
-  teamEnvironmentUrl: vi.fn().mockReturnValue("http://environment.test"),
   teamArtifactRequest: vi.fn().mockImplementation(async (baseUrl: string, token: string) => ({
     baseUrl,
     authorization: token,
