@@ -5,8 +5,8 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { useTeamStore } from "./teamStore";
 
 vi.mock("./teamClient", () => ({
-  teamArtifactRequest: vi.fn().mockImplementation(async (token: string) => ({
-    baseUrl: "http://environment.test",
+  teamArtifactRequest: vi.fn().mockImplementation(async (baseUrl: string, token: string) => ({
+    baseUrl,
     authorization: token,
   })),
 }));
@@ -179,7 +179,11 @@ describe("teamStore", () => {
   it("reads artifacts with the team bearer on the environment origin", async () => {
     const { listArtifacts } = await team();
     vi.mocked(listArtifacts).mockResolvedValue([]);
-    useTeamStore.setState({ token: "team-token", currentWorkspaceId: "ws_a" });
+    useTeamStore.setState({
+      token: "team-token",
+      gatewayUrl: "http://environment.test",
+      currentWorkspaceId: "ws_a",
+    });
 
     await useTeamStore.getState().loadArtifacts();
 

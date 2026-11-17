@@ -38,8 +38,6 @@ const workspace = (id: string) => ({
   id,
   projectId: ProjectId.make(id),
   modelSelection: { instanceId: ProviderInstanceId.make("devReplay"), model: "todo-list" },
-  rpcUrl: "ws://127.0.0.1:1/ws?orchestrationProtocol=2",
-  bearer: "e".repeat(32),
   credentials: { T3_TENANT_CREDENTIAL: `cred-canary-${id}` },
   networkMode: "none" as const,
 });
