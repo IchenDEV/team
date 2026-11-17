@@ -1,10 +1,4 @@
-import {
-  TeamError,
-  TeamId,
-  type TeamReadInput,
-  type TeamRun,
-  type TeamStartInput,
-} from "@t3tools/contracts";
+import type { TeamRun } from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -13,199 +7,178 @@ import * as Schema from "effect/Schema";
 
 import {
   DockerSandbox,
+  SandboxRunNotFound,
   SandboxUnavailable,
   type SandboxError,
   type SandboxWorkspaceSpec,
 } from "./DockerSandbox.ts";
-import { TeamConfig } from "./TeamControlPlane.ts";
 
-const SandboxWorkspace = Schema.Struct({
-  id: TeamId,
-  credentials: Schema.Record(Schema.String, Schema.String),
-  networkMode: Schema.optional(Schema.Literals(["none", "bridge"])),
-});
+export class SandboxRevoked extends Schema.TaggedError<SandboxRevoked>()("SandboxRevoked", {
+  workspaceId: Schema.String,
+}) {}
 
-export const TeamIsolationConfig = Schema.Struct({
-  users: TeamConfig.fields.users,
-  memberships: TeamConfig.fields.memberships,
-  workspaces: Schema.Array(SandboxWorkspace),
-});
-export type TeamIsolationConfig = typeof TeamIsolationConfig.Type;
+export type BoundaryError = SandboxError | SandboxRevoked;
+
+// The workspace record the control plane already resolved for an authenticated
+// member; the boundary never re-authenticates.
+export interface SandboxWorkspace {
+  readonly id: string;
+  readonly credentials: Record<string, string>;
+  readonly networkMode: "none" | "bridge";
+}
+
+const RUN_ID_PATTERN = /^team\.[A-Za-z0-9_-]{1,64}\.[A-Za-z0-9_-]{1,64}\.[A-Za-z0-9_-]{1,64}$/;
+const ARTIFACT_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+
+const dockerName = (runId: string) => `t3ex-${runId.replaceAll(".", "-")}`;
+
+export const scopedRunId = (workspaceId: string, runId: string) =>
+  RUN_ID_PATTERN.test(runId) && runId.startsWith(`team.${workspaceId}.`);
 
 export class TeamExecutionBoundary extends Context.Service<
   TeamExecutionBoundary,
   {
     readonly start: (
-      authorization: string | undefined,
-      input: TeamStartInput,
-    ) => Effect.Effect<TeamRun, TeamError>;
+      workspace: SandboxWorkspace,
+      runId: string,
+      text: string,
+    ) => Effect.Effect<void, BoundaryError>;
     readonly read: (
-      authorization: string | undefined,
-      input: TeamReadInput,
-    ) => Effect.Effect<TeamRun, TeamError>;
+      workspace: SandboxWorkspace,
+      runId: string,
+    ) => Effect.Effect<TeamRun, BoundaryError>;
+    readonly wait: (runId: string) => Effect.Effect<TeamRun, BoundaryError>;
     readonly cancel: (
-      authorization: string | undefined,
-      input: TeamReadInput,
-    ) => Effect.Effect<TeamRun, TeamError>;
-    readonly revoke: (workspaceId: string) => Effect.Effect<void, SandboxError>;
+      workspace: SandboxWorkspace,
+      runId: string,
+    ) => Effect.Effect<TeamRun, BoundaryError>;
+    readonly dropWorkspace: (workspaceId: string) => Effect.Effect<void, never>;
     readonly publishArtifact: (
-      authorization: string | undefined,
-      input: { readonly workspaceId: string; readonly runId: string; readonly name: string },
-    ) => Effect.Effect<{ readonly path: string }, TeamError>;
+      workspace: SandboxWorkspace,
+      runId: string,
+      name: string,
+    ) => Effect.Effect<{ readonly path: string }, BoundaryError>;
   }
 >()("t3/team/TeamExecutionBoundary") {}
 
-const dockerName = (runId: string) => `t3ex-${runId.replaceAll(".", "-")}`;
-
-const RUN_ID_PATTERN = /^team\.[A-Za-z0-9_-]{1,64}\.[A-Za-z0-9_-]{1,64}\.[A-Za-z0-9_-]{1,64}$/;
-
-const ARTIFACT_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
-
-const RUN_STATUS = {
-  running: "running",
-  completed: "completed",
-  failed: "failed",
-  cancelled: "cancelled",
-} as const;
-
 const make = Effect.fn("TeamExecutionBoundary.make")(function* (options: {
-  readonly config: TeamIsolationConfig;
   readonly stateDir: string;
 }) {
   const sandbox = yield* DockerSandbox;
   const fs = yield* FileSystem.FileSystem;
-  const { config } = options;
 
   // Workspace roots are boundary-owned paths under stateDir; a project directory is
   // never used as a sandbox.
-  const specOf = (workspace: (typeof config.workspaces)[number]): SandboxWorkspaceSpec => ({
+  const specOf = (workspace: SandboxWorkspace): SandboxWorkspaceSpec => ({
     id: workspace.id,
     root: `${options.stateDir}/workspaces/${workspace.id}/root`,
     credentialsFile: `${options.stateDir}/workspaces/${workspace.id}/credentials.env`,
-    networkMode: workspace.networkMode ?? "none",
+    networkMode: workspace.networkMode,
   });
+
+  const requireSpec = (workspace: SandboxWorkspace) =>
+    options.stateDir
+      ? Effect.succeed(specOf(workspace))
+      : new SandboxUnavailable({
+          operation: "sandbox",
+          detail: "no sandbox state directory configured",
+        });
 
   const revokedMarker = (workspaceId: string) =>
     `${options.stateDir}/workspaces/${workspaceId}/REVOKED`;
 
-  const isRevoked = (workspaceId: string) =>
-    fs.exists(revokedMarker(workspaceId)).pipe(Effect.orElseSucceed(() => true));
-
-  const authorize = Effect.fn("TeamExecutionBoundary.authorize")(function* (
-    authorization: string | undefined,
-    workspaceId: string,
-    execute: boolean,
-  ) {
-    const user = config.users.find((candidate) => authorization === `Bearer ${candidate.token}`);
-    if (!user) return yield* new TeamError({ rule: "authentication_required" });
-    const membership = config.memberships.find(
-      (candidate) => candidate.userId === user.id && candidate.workspaceId === workspaceId,
+  const requireLive = (workspace: SandboxWorkspace) =>
+    fs.exists(revokedMarker(workspace.id)).pipe(
+      Effect.orElseSucceed(() => true),
+      Effect.flatMap((revoked) =>
+        revoked ? new SandboxRevoked({ workspaceId: workspace.id }) : Effect.void,
+      ),
     );
-    const workspace = config.workspaces.find((candidate) => candidate.id === workspaceId);
-    if (!membership || !workspace || (yield* isRevoked(workspaceId)))
-      return yield* new TeamError({ rule: "workspace_membership_required" });
-    if (execute && membership.role === "Viewer")
-      return yield* new TeamError({ rule: "viewer_execution_forbidden" });
-    return { user, workspace };
-  });
 
-  const sandboxErrors = {
-    SandboxRunNotFound: () => new TeamError({ rule: "run_not_found" as const }),
-    SandboxRunConflict: () => new TeamError({ rule: "command_conflict" as const }),
-    SandboxUnavailable: () => new TeamError({ rule: "executor_failure" as const }),
-  };
-
-  const scopedRunId = (workspaceId: string, runId: string) =>
-    RUN_ID_PATTERN.test(runId) && runId.startsWith(`team.${workspaceId}.`);
-
-  const readRunByName = Effect.fn("TeamExecutionBoundary.readRunByName")(function* (runId: string) {
-    const info = yield* sandbox.readRun(dockerName(runId)).pipe(Effect.catchTags(sandboxErrors));
-    return {
+  const toTeamRun = (runId: string, info: { status: string; output: ReadonlyArray<string> }) =>
+    ({
       id: runId,
       nativeRunId: dockerName(runId),
-      status: RUN_STATUS[info.status],
+      status: info.status as TeamRun["status"],
       output: [...info.output],
-    } satisfies TeamRun;
+    }) satisfies TeamRun;
+
+  const readScoped = Effect.fn("TeamExecutionBoundary.readScoped")(function* (
+    workspace: SandboxWorkspace,
+    runId: string,
+  ) {
+    if (!scopedRunId(workspace.id, runId)) return yield* new SandboxRunNotFound({ runName: runId });
+    return toTeamRun(runId, yield* sandbox.readRun(dockerName(runId)));
   });
 
   return TeamExecutionBoundary.of({
-    start: Effect.fn("TeamExecutionBoundary.start")(function* (authorization, input) {
-      const { user, workspace } = yield* authorize(authorization, input.workspaceId, true);
-      const spec = specOf(workspace);
-      const runId = `team.${workspace.id}.${user.id}.${input.commandId}`;
-      yield* sandbox
-        .ensureWorkspace(spec, workspace.credentials)
-        .pipe(Effect.catchTags(sandboxErrors));
-      yield* sandbox
-        .startRun(spec, dockerName(runId), input.text)
-        .pipe(Effect.catchTags(sandboxErrors));
-      return yield* readRunByName(runId);
+    start: Effect.fn("TeamExecutionBoundary.start")(function* (workspace, runId, text) {
+      if (!scopedRunId(workspace.id, runId))
+        return yield* new SandboxRunNotFound({ runName: runId });
+      yield* requireLive(workspace);
+      const spec = yield* requireSpec(workspace);
+      yield* sandbox.ensureWorkspace(spec, workspace.credentials);
+      yield* sandbox.startRun(spec, dockerName(runId), text);
     }),
 
-    read: Effect.fn("TeamExecutionBoundary.read")(function* (authorization, input) {
-      yield* authorize(authorization, input.workspaceId, false);
-      if (!scopedRunId(input.workspaceId, input.runId))
-        return yield* new TeamError({ rule: "run_not_found" });
-      return yield* readRunByName(input.runId);
+    read: Effect.fn("TeamExecutionBoundary.read")(function* (workspace, runId) {
+      yield* requireLive(workspace);
+      return yield* readScoped(workspace, runId);
     }),
 
-    cancel: Effect.fn("TeamExecutionBoundary.cancel")(function* (authorization, input) {
-      yield* authorize(authorization, input.workspaceId, true);
-      if (!scopedRunId(input.workspaceId, input.runId))
-        return yield* new TeamError({ rule: "run_not_found" });
-      yield* sandbox.cancelRun(dockerName(input.runId)).pipe(Effect.catchTags(sandboxErrors));
-      return yield* readRunByName(input.runId);
+    wait: Effect.fn("TeamExecutionBoundary.wait")(function* (runId) {
+      const info = yield* sandbox.waitRun(dockerName(runId));
+      return toTeamRun(runId, info);
     }),
 
-    revoke: Effect.fn("TeamExecutionBoundary.revoke")(function* (workspaceId) {
-      const workspace = config.workspaces.find((candidate) => candidate.id === workspaceId);
-      if (!workspace) return;
-      yield* sandbox.removeWorkspaceRuns(workspaceId);
+    cancel: Effect.fn("TeamExecutionBoundary.cancel")(function* (workspace, runId) {
+      yield* requireLive(workspace);
+      if (!scopedRunId(workspace.id, runId))
+        return yield* new SandboxRunNotFound({ runName: runId });
+      yield* sandbox.cancelRun(dockerName(runId));
+      return yield* readScoped(workspace, runId);
+    }),
+
+    // Deleting a workspace revokes it: kill every workspace run and leave a marker
+    // so stale callers are denied even before membership rows settle. A missing
+    // container runtime leaves nothing to clean, so the marker is still written.
+    dropWorkspace: Effect.fn("TeamExecutionBoundary.dropWorkspace")(function* (workspaceId) {
+      if (!options.stateDir) return;
+      yield* sandbox.removeWorkspaceRuns(workspaceId).pipe(Effect.ignore);
       yield* fs
         .makeDirectory(`${options.stateDir}/workspaces/${workspaceId}`, { recursive: true })
-        .pipe(
-          Effect.mapError(
-            (cause) =>
-              new SandboxUnavailable({
-                operation: "workspace.revoke",
-                detail: String(cause),
-              }),
-          ),
-        );
-      yield* fs.writeFileString(revokedMarker(workspaceId), "").pipe(
-        Effect.mapError(
-          (cause) =>
-            new SandboxUnavailable({
-              operation: "workspace.revoke",
-              detail: String(cause),
-            }),
-        ),
-      );
+        .pipe(Effect.andThen(fs.writeFileString(revokedMarker(workspaceId), "")), Effect.ignore);
     }),
 
     publishArtifact: Effect.fn("TeamExecutionBoundary.publishArtifact")(
-      function* (authorization, input) {
-        const { workspace } = yield* authorize(authorization, input.workspaceId, true);
-        if (!scopedRunId(input.workspaceId, input.runId) || !ARTIFACT_NAME_PATTERN.test(input.name))
-          return yield* new TeamError({ rule: "run_not_found" });
-        const info = yield* sandbox
-          .readRun(dockerName(input.runId))
-          .pipe(Effect.catchTags(sandboxErrors));
-        if (info.status !== "completed") return yield* new TeamError({ rule: "executor_failure" });
-        const source = `${specOf(workspace).root}/out/${input.name}`;
+      function* (workspace, runId, name) {
+        yield* requireLive(workspace);
+        if (!scopedRunId(workspace.id, runId) || !ARTIFACT_NAME_PATTERN.test(name))
+          return yield* new SandboxRunNotFound({ runName: runId });
+        const info = yield* sandbox.readRun(dockerName(runId));
+        if (info.status !== "completed")
+          return yield* new SandboxUnavailable({
+            operation: "artifact.publish",
+            detail: `run ${runId} did not complete`,
+          });
+        const spec = yield* requireSpec(workspace);
         const targetDir = `${options.stateDir}/published/${workspace.id}`;
-        const target = `${targetDir}/${input.name}`;
+        const target = `${targetDir}/${name}`;
+        const ioError = new SandboxUnavailable({
+          operation: "artifact.publish",
+          detail: `cannot stage ${name} under ${targetDir}`,
+        });
         yield* fs
           .makeDirectory(targetDir, { recursive: true })
-          .pipe(Effect.mapError(() => new TeamError({ rule: "executor_failure" })));
+          .pipe(Effect.mapError(() => ioError));
         yield* fs
-          .copyFile(source, target)
-          .pipe(Effect.mapError(() => new TeamError({ rule: "run_not_found" })));
+          .copyFile(`${spec.root}/out/${name}`, target)
+          .pipe(Effect.mapError(() => new SandboxRunNotFound({ runName: runId })));
         return { path: target };
       },
     ),
   });
 });
 
-export const layer = (options: { config: TeamIsolationConfig; stateDir: string }) =>
+export const layer = (options: { readonly stateDir: string }) =>
   Layer.effect(TeamExecutionBoundary, make(options));
