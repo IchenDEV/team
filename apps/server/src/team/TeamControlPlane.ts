@@ -1,4 +1,5 @@
 import {
+  AuthOrchestrationReadScope,
   ModelSelection,
   ProjectId,
   TeamError,
@@ -42,8 +43,6 @@ const Workspace = Schema.Struct({
   id: TeamId,
   projectId: ProjectId,
   modelSelection: ModelSelection,
-  rpcUrl: Schema.String,
-  bearer: Schema.String.check(Schema.isMinLength(32)),
   // Restricted credential scope injected into this workspace's sandbox only;
   // never shared across tenants. networkMode defaults to a fully cut network.
   credentials: Schema.optional(Schema.Record(Schema.String, Schema.String)),
@@ -51,6 +50,8 @@ const Workspace = Schema.Struct({
 });
 // Runs execute in a per-workspace container sandbox under this state directory;
 // when it is absent the boundary fails closed instead of falling back to the host.
+// The environment server serves this configuration and owns the same session as
+// the artifact routes, so a workspace entry names no executor URL or bearer.
 export const TeamConfig = Schema.Struct({
   workspaces: Schema.Array(Workspace),
   sandboxStateDir: Schema.optional(Schema.String),
@@ -392,9 +393,11 @@ export const layer = (config: TeamConfig) =>
                   members.setMember(session.subject, input.workspaceId, input.userId, input.role),
                 );
                 const invitation = yield* auth
+                  // A team session must never carry the environment's operate scope:
+                  // it would authorize host execution outside the workspace sandbox.
                   .createPairingLink({
                     subject: userSubject(input.userId),
-                    scopes: ["orchestration:read"],
+                    scopes: [AuthOrchestrationReadScope],
                   })
                   .pipe(Effect.catch(authFailure));
                 return { credential: invitation.credential };
@@ -421,6 +424,24 @@ export const layer = (config: TeamConfig) =>
             yield* storage(members.removeMember(session.subject, workspaceId, userId));
             // A removed member can neither answer nor be waiting on a call.
             yield* callRelay.cancelMember(workspaceId, userId);
+            const subject = userSubject(userId);
+            const remaining = yield* storage(members.listWorkspaces(subject));
+            // The environment session reads this environment's projects without a
+            // per-request membership check, so a member who belongs to no workspace
+            // here must lose it. Sessions of members elsewhere are left alone.
+            if (remaining.length > 0) return;
+            yield* Effect.gen(function* () {
+              const active = yield* sessions.listActive();
+              yield* Effect.forEach(
+                active.filter((entry) => entry.subject === subject),
+                (entry) => sessions.revoke(entry.sessionId),
+                { discard: true },
+              );
+            }).pipe(
+              Effect.catch((cause) =>
+                Effect.logError("Team member session revocation failed", { cause, subject }),
+              ),
+            );
           },
         ),
         start: Effect.fn("TeamControlPlane.start")(function* (authorization, input) {

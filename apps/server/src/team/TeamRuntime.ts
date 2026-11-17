@@ -1,6 +1,5 @@
 import { TeamRpcGroup } from "@t3tools/contracts";
 import { RpcServer, RpcSerialization } from "effect/rpc";
-import { HttpMiddleware, HttpRouter } from "effect/http";
 import * as Layer from "effect/Layer";
 import * as TeamControlPlane from "./TeamControlPlane.ts";
 import { layer as boundaryLayer, workspaceRoot } from "./TeamExecutionBoundary.ts";
@@ -21,7 +20,10 @@ const humanCallLayer = (config: TeamControlPlane.TeamConfig) => {
   }).pipe(Layer.provideMerge(TeamHumanCallPersistence.layer));
 };
 
-export const layer = (config: TeamControlPlane.TeamConfig) =>
+// The environment server already provides EnvironmentAuth, so mounting the control
+// plane there uses this layer: a second EnvironmentAuth instance would keep its own
+// session invalidation events.
+export const layerOnEnvironment = (config: TeamControlPlane.TeamConfig) =>
   Layer.mergeAll(TeamControlPlane.layer(config), TeamHumanCalls.tickLoop).pipe(
     Layer.provideMerge(humanCallLayer(config)),
     Layer.provideMerge(
@@ -30,21 +32,13 @@ export const layer = (config: TeamControlPlane.TeamConfig) =>
       ),
     ),
     Layer.provideMerge(TeamMemberships.layer),
-    Layer.provideMerge(EnvironmentAuth.layerRuntime),
   );
 
-/**
- * The web and desktop clients call this gateway from another origin. The gateway authenticates
- * with a bearer header and never a cookie, so the wildcard origin is safe here.
- */
-const browserCors = HttpRouter.middleware(HttpMiddleware.cors(), { global: true });
+export const layer = (config: TeamControlPlane.TeamConfig) =>
+  layerOnEnvironment(config).pipe(Layer.provideMerge(EnvironmentAuth.layerRuntime));
 
 export const http = RpcServer.layerHttp({
   group: TeamRpcGroup,
   path: "/team/rpc",
   protocol: "http",
-}).pipe(
-  Layer.provide(TeamControlPlane.handlers),
-  Layer.provide(RpcSerialization.layerNdjson),
-  Layer.merge(browserCors),
-);
+}).pipe(Layer.provide(TeamControlPlane.handlers), Layer.provide(RpcSerialization.layerNdjson));
