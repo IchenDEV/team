@@ -30,6 +30,7 @@ import {
   Settings2Icon,
   ShieldCheckIcon,
   SmartphoneIcon,
+  UsersIcon,
   WrenchIcon,
   XIcon,
 } from "lucide-react";
@@ -105,6 +106,7 @@ const SETTINGS_SECTION_ICONS: Readonly<
   "/settings/source-control": GitBranchIcon,
   "/settings/worktrees": FolderTreeIcon,
   "/settings/connections": ServerIcon,
+  "/settings/team": UsersIcon,
   "/settings/access": ShieldCheckIcon,
   "/settings/secrets": KeyRoundIcon,
   "/settings/maintenance": WrenchIcon,

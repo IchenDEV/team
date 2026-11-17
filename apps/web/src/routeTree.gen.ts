@@ -22,10 +22,12 @@ import { Route as ChatUsageRouteImport } from './routes/_chat.usage'
 import { Route as ChatSettingsRouteImport } from './routes/_chat.settings'
 import { Route as ChatPullRequestsRouteImport } from './routes/_chat.pull-requests'
 import { Route as ChatNewRouteImport } from './routes/_chat.new'
+import { Route as ChatIssuesRouteImport } from './routes/_chat.issues'
 import { Route as ThreadsEnvironmentIdThreadIdRouteImport } from './routes/threads.$environmentId.$threadId'
 import { Route as ChatSettingsWorktreesRouteImport } from './routes/_chat.settings.worktrees'
 import { Route as ChatSettingsVoiceRouteImport } from './routes/_chat.settings.voice'
 import { Route as ChatSettingsThreadsRouteImport } from './routes/_chat.settings.threads'
+import { Route as ChatSettingsTeamRouteImport } from './routes/_chat.settings.team'
 import { Route as ChatSettingsStorageRouteImport } from './routes/_chat.settings.storage'
 import { Route as ChatSettingsSourceControlRouteImport } from './routes/_chat.settings.source-control'
 import { Route as ChatSettingsSnapShotRouteImport } from './routes/_chat.settings.snap-shot'
@@ -117,6 +119,11 @@ const ChatNewRoute = ChatNewRouteImport.update({
   path: '/new',
   getParentRoute: () => ChatRoute,
 } as any)
+const ChatIssuesRoute = ChatIssuesRouteImport.update({
+  id: '/issues',
+  path: '/issues',
+  getParentRoute: () => ChatRoute,
+} as any)
 const ThreadsEnvironmentIdThreadIdRoute =
   ThreadsEnvironmentIdThreadIdRouteImport.update({
     id: '/threads/$environmentId/$threadId',
@@ -136,6 +143,11 @@ const ChatSettingsVoiceRoute = ChatSettingsVoiceRouteImport.update({
 const ChatSettingsThreadsRoute = ChatSettingsThreadsRouteImport.update({
   id: '/threads',
   path: '/threads',
+  getParentRoute: () => ChatSettingsRoute,
+} as any)
+const ChatSettingsTeamRoute = ChatSettingsTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
   getParentRoute: () => ChatSettingsRoute,
 } as any)
 const ChatSettingsStorageRoute = ChatSettingsStorageRouteImport.update({
@@ -282,6 +294,7 @@ export interface FileRoutesByFullPath {
   '/guest': typeof GuestRoute
   '/pair': typeof PairRoute
   '/welcome': typeof WelcomeRoute
+  '/issues': typeof ChatIssuesRoute
   '/new': typeof ChatNewRoute
   '/pull-requests': typeof ChatPullRequestsRoute
   '/settings': typeof ChatSettingsRouteWithChildren
@@ -313,6 +326,7 @@ export interface FileRoutesByFullPath {
   '/settings/snap-shot': typeof ChatSettingsSnapShotRoute
   '/settings/source-control': typeof ChatSettingsSourceControlRoute
   '/settings/storage': typeof ChatSettingsStorageRoute
+  '/settings/team': typeof ChatSettingsTeamRoute
   '/settings/threads': typeof ChatSettingsThreadsRoute
   '/settings/voice': typeof ChatSettingsVoiceRoute
   '/settings/worktrees': typeof ChatSettingsWorktreesRoute
@@ -325,6 +339,7 @@ export interface FileRoutesByTo {
   '/guest': typeof GuestRoute
   '/pair': typeof PairRoute
   '/welcome': typeof WelcomeRoute
+  '/issues': typeof ChatIssuesRoute
   '/new': typeof ChatNewRoute
   '/pull-requests': typeof ChatPullRequestsRoute
   '/settings': typeof ChatSettingsRouteWithChildren
@@ -357,6 +372,7 @@ export interface FileRoutesByTo {
   '/settings/snap-shot': typeof ChatSettingsSnapShotRoute
   '/settings/source-control': typeof ChatSettingsSourceControlRoute
   '/settings/storage': typeof ChatSettingsStorageRoute
+  '/settings/team': typeof ChatSettingsTeamRoute
   '/settings/threads': typeof ChatSettingsThreadsRoute
   '/settings/voice': typeof ChatSettingsVoiceRoute
   '/settings/worktrees': typeof ChatSettingsWorktreesRoute
@@ -371,6 +387,7 @@ export interface FileRoutesById {
   '/guest': typeof GuestRoute
   '/pair': typeof PairRoute
   '/welcome': typeof WelcomeRoute
+  '/_chat/issues': typeof ChatIssuesRoute
   '/_chat/new': typeof ChatNewRoute
   '/_chat/pull-requests': typeof ChatPullRequestsRoute
   '/_chat/settings': typeof ChatSettingsRouteWithChildren
@@ -403,6 +420,7 @@ export interface FileRoutesById {
   '/_chat/settings/snap-shot': typeof ChatSettingsSnapShotRoute
   '/_chat/settings/source-control': typeof ChatSettingsSourceControlRoute
   '/_chat/settings/storage': typeof ChatSettingsStorageRoute
+  '/_chat/settings/team': typeof ChatSettingsTeamRoute
   '/_chat/settings/threads': typeof ChatSettingsThreadsRoute
   '/_chat/settings/voice': typeof ChatSettingsVoiceRoute
   '/_chat/settings/worktrees': typeof ChatSettingsWorktreesRoute
@@ -418,6 +436,7 @@ export interface FileRouteTypes {
     | '/guest'
     | '/pair'
     | '/welcome'
+    | '/issues'
     | '/new'
     | '/pull-requests'
     | '/settings'
@@ -449,6 +468,7 @@ export interface FileRouteTypes {
     | '/settings/snap-shot'
     | '/settings/source-control'
     | '/settings/storage'
+    | '/settings/team'
     | '/settings/threads'
     | '/settings/voice'
     | '/settings/worktrees'
@@ -461,6 +481,7 @@ export interface FileRouteTypes {
     | '/guest'
     | '/pair'
     | '/welcome'
+    | '/issues'
     | '/new'
     | '/pull-requests'
     | '/settings'
@@ -493,6 +514,7 @@ export interface FileRouteTypes {
     | '/settings/snap-shot'
     | '/settings/source-control'
     | '/settings/storage'
+    | '/settings/team'
     | '/settings/threads'
     | '/settings/voice'
     | '/settings/worktrees'
@@ -506,6 +528,7 @@ export interface FileRouteTypes {
     | '/guest'
     | '/pair'
     | '/welcome'
+    | '/_chat/issues'
     | '/_chat/new'
     | '/_chat/pull-requests'
     | '/_chat/settings'
@@ -538,6 +561,7 @@ export interface FileRouteTypes {
     | '/_chat/settings/snap-shot'
     | '/_chat/settings/source-control'
     | '/_chat/settings/storage'
+    | '/_chat/settings/team'
     | '/_chat/settings/threads'
     | '/_chat/settings/voice'
     | '/_chat/settings/worktrees'
@@ -649,6 +673,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatNewRouteImport
       parentRoute: typeof ChatRoute
     }
+    '/_chat/issues': {
+      id: '/_chat/issues'
+      path: '/issues'
+      fullPath: '/issues'
+      preLoaderRoute: typeof ChatIssuesRouteImport
+      parentRoute: typeof ChatRoute
+    }
     '/threads/$environmentId/$threadId': {
       id: '/threads/$environmentId/$threadId'
       path: '/threads/$environmentId/$threadId'
@@ -675,6 +706,13 @@ declare module '@tanstack/react-router' {
       path: '/threads'
       fullPath: '/settings/threads'
       preLoaderRoute: typeof ChatSettingsThreadsRouteImport
+      parentRoute: typeof ChatSettingsRoute
+    }
+    '/_chat/settings/team': {
+      id: '/_chat/settings/team'
+      path: '/team'
+      fullPath: '/settings/team'
+      preLoaderRoute: typeof ChatSettingsTeamRouteImport
       parentRoute: typeof ChatSettingsRoute
     }
     '/_chat/settings/storage': {
@@ -887,6 +925,7 @@ interface ChatSettingsRouteChildren {
   ChatSettingsSnapShotRoute: typeof ChatSettingsSnapShotRoute
   ChatSettingsSourceControlRoute: typeof ChatSettingsSourceControlRoute
   ChatSettingsStorageRoute: typeof ChatSettingsStorageRoute
+  ChatSettingsTeamRoute: typeof ChatSettingsTeamRoute
   ChatSettingsThreadsRoute: typeof ChatSettingsThreadsRoute
   ChatSettingsVoiceRoute: typeof ChatSettingsVoiceRoute
   ChatSettingsWorktreesRoute: typeof ChatSettingsWorktreesRoute
@@ -917,6 +956,7 @@ const ChatSettingsRouteChildren: ChatSettingsRouteChildren = {
   ChatSettingsSnapShotRoute: ChatSettingsSnapShotRoute,
   ChatSettingsSourceControlRoute: ChatSettingsSourceControlRoute,
   ChatSettingsStorageRoute: ChatSettingsStorageRoute,
+  ChatSettingsTeamRoute: ChatSettingsTeamRoute,
   ChatSettingsThreadsRoute: ChatSettingsThreadsRoute,
   ChatSettingsVoiceRoute: ChatSettingsVoiceRoute,
   ChatSettingsWorktreesRoute: ChatSettingsWorktreesRoute,
@@ -927,6 +967,7 @@ const ChatSettingsRouteWithChildren = ChatSettingsRoute._addFileChildren(
 )
 
 interface ChatRouteChildren {
+  ChatIssuesRoute: typeof ChatIssuesRoute
   ChatNewRoute: typeof ChatNewRoute
   ChatPullRequestsRoute: typeof ChatPullRequestsRoute
   ChatSettingsRoute: typeof ChatSettingsRouteWithChildren
@@ -937,6 +978,7 @@ interface ChatRouteChildren {
 }
 
 const ChatRouteChildren: ChatRouteChildren = {
+  ChatIssuesRoute: ChatIssuesRoute,
   ChatNewRoute: ChatNewRoute,
   ChatPullRequestsRoute: ChatPullRequestsRoute,
   ChatSettingsRoute: ChatSettingsRouteWithChildren,

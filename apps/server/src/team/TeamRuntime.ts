@@ -1,5 +1,6 @@
 import { TeamRpcGroup } from "@t3tools/contracts";
 import { RpcServer, RpcSerialization } from "effect/rpc";
+import { HttpMiddleware, HttpRouter } from "effect/http";
 import * as Layer from "effect/Layer";
 import * as TeamControlPlane from "./TeamControlPlane.ts";
 import { layer as boundaryLayer, workspaceRoot } from "./TeamExecutionBoundary.ts";
@@ -32,8 +33,18 @@ export const layer = (config: TeamControlPlane.TeamConfig) =>
     Layer.provideMerge(EnvironmentAuth.layerRuntime),
   );
 
+/**
+ * The web and desktop clients call this gateway from another origin. The gateway authenticates
+ * with a bearer header and never a cookie, so the wildcard origin is safe here.
+ */
+const browserCors = HttpRouter.middleware(HttpMiddleware.cors(), { global: true });
+
 export const http = RpcServer.layerHttp({
   group: TeamRpcGroup,
   path: "/team/rpc",
   protocol: "http",
-}).pipe(Layer.provide(TeamControlPlane.handlers), Layer.provide(RpcSerialization.layerNdjson));
+}).pipe(
+  Layer.provide(TeamControlPlane.handlers),
+  Layer.provide(RpcSerialization.layerNdjson),
+  Layer.merge(browserCors),
+);

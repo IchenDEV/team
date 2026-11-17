@@ -1,0 +1,86 @@
+import { TeamApiError } from "./errors.ts";
+
+/**
+ * Member-facing artifact shape of the environment HTTP route, with the preview/download paths
+ * the server builds. Host storage keys and source URLs never reach the client.
+ */
+export interface TeamArtifact {
+  readonly id: string;
+  readonly workspaceId: string;
+  readonly projectId: string;
+  readonly ownerUserId: string | null;
+  readonly ownerName: string | null;
+  readonly name: string;
+  readonly visibility: "workspace" | "private";
+  readonly version: number;
+  readonly sizeBytes: number;
+  readonly mimeType: string | null;
+  readonly run: { readonly threadId: string; readonly ref?: string } | null;
+  readonly createdAt: number;
+  readonly updatedAt: number;
+  readonly previewPath: string;
+  readonly downloadPath: string;
+}
+
+export const TEAM_ARTIFACTS_PATH = "/api/team/workspaces";
+
+export const teamArtifactsPath = (workspaceId: string): string =>
+  `${TEAM_ARTIFACTS_PATH}/${encodeURIComponent(workspaceId)}/artifacts`;
+
+/** Absolute URL for a `previewPath`/`downloadPath` the artifact route returned. */
+export const teamArtifactUrl = (baseUrl: string, path: string): string =>
+  `${baseUrl.replace(/\/+$/, "")}${path}`;
+
+const readErrorRule = (body: unknown, status: number): string =>
+  typeof body === "object" && body !== null && "error" in body
+    ? String((body as { error: unknown }).error)
+    : `http_${status}`;
+
+export interface TeamArtifactRequest {
+  /** Origin of the environment server that owns the artifact route. */
+  readonly baseUrl: string;
+  readonly workspaceId: string;
+  /** Team session bearer; the same identity the member list uses. */
+  readonly authorization?: string | null;
+  readonly fetchImpl?: typeof fetch;
+}
+
+async function artifactRequest<A>(input: TeamArtifactRequest, path: string): Promise<A> {
+  const fetchImpl = input.fetchImpl ?? fetch;
+  const authorization = input.authorization ?? null;
+  const response = await fetchImpl(`${input.baseUrl.replace(/\/+$/, "")}${path}`, {
+    method: "GET",
+    credentials: authorization === null ? "include" : "omit",
+    headers: authorization === null ? {} : { authorization: `Bearer ${authorization}` },
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as unknown;
+    const rule = readErrorRule(body, response.status);
+    throw new TeamApiError({
+      message: `Team artifact request failed: ${rule} (${response.status})`,
+      rule,
+      status: response.status,
+    });
+  }
+  // A server without the artifact route answers with the app shell and a 200, so the content
+  // type is what tells a missing route from a real answer.
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    throw new TeamApiError({
+      message: "Shared artifacts are not available on this environment.",
+      rule: "artifact_route_unavailable",
+      status: 404,
+    });
+  }
+  return (await response.json()) as A;
+}
+
+export async function listArtifacts(
+  input: TeamArtifactRequest,
+): Promise<ReadonlyArray<TeamArtifact>> {
+  const body = await artifactRequest<{ artifacts: TeamArtifact[] }>(
+    input,
+    teamArtifactsPath(input.workspaceId),
+  );
+  return body.artifacts;
+}
