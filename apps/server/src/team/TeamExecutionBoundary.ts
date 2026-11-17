@@ -38,6 +38,10 @@ const dockerName = (runId: string) => `t3ex-${runId}`;
 export const scopedRunId = (workspaceId: string, runId: string) =>
   RUN_ID_PATTERN.test(runId) && runId.startsWith(`team.${workspaceId}.`);
 
+/** The one place the boundary-owned workspace root is derived; the call relay reads it too. */
+export const workspaceRoot = (stateDir: string, workspaceId: string) =>
+  `${stateDir}/workspaces/${workspaceId}/root`;
+
 export class TeamExecutionBoundary extends Context.Service<
   TeamExecutionBoundary,
   {
@@ -74,7 +78,7 @@ const make = Effect.fn("TeamExecutionBoundary.make")(function* (options: {
   // never used as a sandbox.
   const specOf = (workspace: SandboxWorkspace): SandboxWorkspaceSpec => ({
     id: workspace.id,
-    root: `${options.stateDir}/workspaces/${workspace.id}/root`,
+    root: workspaceRoot(options.stateDir, workspace.id),
     credentialsFile: `${options.stateDir}/workspaces/${workspace.id}/credentials.env`,
     networkMode: workspace.networkMode,
   });

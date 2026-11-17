@@ -8,6 +8,9 @@ import * as SqlClient from "effect/sql/SqlClient";
 
 import { PersistenceDecodeError, PersistenceSqlError, toPersistenceSqlError } from "./Errors.ts";
 
+/** One place builds an invited user's subject, so the gateway and the call relay agree. */
+export const userSubject = (id: string) => `team:user:${id}`;
+
 const User = Schema.Struct({ id: Schema.String, subject: Schema.String, name: Schema.String });
 const Workspace = TeamWorkspace;
 const Role = TeamRole;
@@ -302,3 +305,5 @@ const make = Effect.gen(function* () {
 });
 
 export const layer = Layer.effect(TeamMembershipRepository, make);
+
+export const isMembershipError = Schema.is(TeamMembershipError);

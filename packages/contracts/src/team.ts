@@ -30,6 +30,10 @@ export const TeamErrorRule = Schema.Literals([
   "member_not_found",
   "workspace_not_configured",
   "workspace_identifier_reserved",
+  "human_call_not_found",
+  "human_call_not_pending",
+  "human_call_rate_limited",
+  "callee_not_member",
 ]);
 export type TeamErrorRule = typeof TeamErrorRule.Type;
 
@@ -69,6 +73,20 @@ export const TeamRun = Schema.Struct({
   output: Schema.Array(Schema.String),
 });
 export type TeamRun = typeof TeamRun.Type;
+
+/** A pending call as its callee sees it: who asked, what, and when it stops waiting. */
+export const TeamHumanCall = Schema.Struct({
+  id: Schema.String,
+  workspaceId: TeamId,
+  runId: Schema.String,
+  caller: Schema.Struct({ userId: TeamId, name: TeamName }),
+  question: Schema.String,
+  options: Schema.Array(Schema.String),
+  contextLink: Schema.NullOr(Schema.String),
+  raisedAt: Schema.DateTimeUtc,
+  expiresAt: Schema.NullOr(Schema.DateTimeUtc),
+});
+export type TeamHumanCall = typeof TeamHumanCall.Type;
 
 const workspaceInput = Schema.Struct({ workspaceId: TeamId });
 const memberInput = Schema.Struct({ workspaceId: TeamId, userId: TeamId });
@@ -118,6 +136,20 @@ export const TeamRpcGroup = RpcGroup.make(
   Rpc.make("team.removeMember", { payload: memberInput, success: Schema.Void, error: TeamError }),
   Rpc.make("team.start", { payload: TeamStartInput, success: TeamRun, error: TeamError }),
   Rpc.make("team.read", { payload: TeamReadInput, success: TeamRun, error: TeamError }),
+  Rpc.make("team.humanCalls", {
+    payload: workspaceInput,
+    success: Schema.Array(TeamHumanCall),
+    error: TeamError,
+  }),
+  Rpc.make("team.answerHumanCall", {
+    payload: {
+      workspaceId: TeamId,
+      callId: Schema.String.check(Schema.isPattern(/^[A-Za-z0-9_-]{1,64}$/)),
+      answer: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(4_000)),
+    },
+    success: Schema.Void,
+    error: TeamError,
+  }),
   Rpc.make("team.stream", {
     payload: TeamReadInput,
     success: TeamRun,

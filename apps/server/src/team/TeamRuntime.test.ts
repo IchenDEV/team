@@ -36,6 +36,8 @@ it.live("delivers a run from an open HTTP subscription before that subscription 
         removeMember: unavailable,
         start: unavailable,
         read: unavailable,
+        humanCalls: unavailable,
+        answerHumanCall: unavailable,
         stream: () => Stream.concat(Stream.succeed(run), Stream.never),
       });
       const context = yield* Layer.build(
