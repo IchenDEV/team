@@ -17,6 +17,7 @@
   "scripts": {
     "team:p0": "node scripts/team-p0.ts",
     "team:p0:proof": "node scripts/team-p0-proof.ts",
+    "team:isolation": "node scripts/team-isolation.ts",
     "dev": "node --watch --watch-path=src --watch-path=../../packages --watch-path=package.json src/bin.ts",
     "dev:built": "vp run dev",
     "build:bundle": "vp pack",
