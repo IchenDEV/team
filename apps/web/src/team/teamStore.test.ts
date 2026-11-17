@@ -97,6 +97,8 @@ describe("teamStore", () => {
     // The gateway session still works for the member's other workspaces.
     expect(state.token).toBe("token");
     expect(state.workspacesError).toContain("denied");
+    // The revoked workspace cannot be re-selected and denied again.
+    expect(state.workspaces?.map((workspace) => workspace.id)).toEqual(["ws_b"]);
   });
 
   it("clears the session when the token itself is rejected", async () => {

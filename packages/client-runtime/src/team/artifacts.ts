@@ -40,7 +40,7 @@ export interface TeamArtifactRequest {
   /** Origin of the environment server that owns the artifact route. */
   readonly baseUrl: string;
   readonly workspaceId: string;
-  /** Bearer for the desktop shell; same-origin browser sessions ride the cookie instead. */
+  /** Team session bearer; the same identity the member list uses. */
   readonly authorization?: string | null;
   readonly fetchImpl?: typeof fetch;
 }
@@ -54,7 +54,11 @@ async function artifactRequest<A>(input: TeamArtifactRequest, path: string): Pro
     headers: authorization === null ? {} : { authorization: `Bearer ${authorization}` },
   });
   if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as unknown;
+    // A packaged server answers unknown paths with the app shell, so only JSON carries a rule.
+    const contentType = response.headers.get("content-type") ?? "";
+    const body = contentType.includes("application/json")
+      ? ((await response.json().catch(() => null)) as unknown)
+      : null;
     const rule = readErrorRule(body, response.status);
     throw new TeamApiError({
       message: `Team artifact request failed: ${rule} (${response.status})`,
@@ -63,6 +67,37 @@ async function artifactRequest<A>(input: TeamArtifactRequest, path: string): Pro
     });
   }
   return (await response.json()) as A;
+}
+
+/**
+ * Content of one artifact, authenticated with the member's own session. Navigations cannot carry
+ * the bearer, so the caller turns this blob into an object URL for open or download.
+ */
+export async function fetchArtifactContent(input: {
+  readonly baseUrl: string;
+  readonly path: string;
+  readonly authorization: string;
+  readonly fetchImpl?: typeof fetch;
+}): Promise<Blob> {
+  const fetchImpl = input.fetchImpl ?? fetch;
+  const response = await fetchImpl(teamArtifactUrl(input.baseUrl, input.path), {
+    method: "GET",
+    credentials: "omit",
+    headers: { authorization: `Bearer ${input.authorization}` },
+  });
+  if (!response.ok) {
+    const contentType = response.headers.get("content-type") ?? "";
+    const body = contentType.includes("application/json")
+      ? ((await response.json().catch(() => null)) as unknown)
+      : null;
+    const rule = readErrorRule(body, response.status);
+    throw new TeamApiError({
+      message: `Team artifact request failed: ${rule} (${response.status})`,
+      rule,
+      status: response.status,
+    });
+  }
+  return await response.blob();
 }
 
 export async function listArtifacts(
