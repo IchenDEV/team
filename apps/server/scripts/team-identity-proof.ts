@@ -126,10 +126,14 @@ const program = Effect.gen(function* () {
       });
       const ownerLink = yield* auth.createPairingLink({
         subject: ownerSubject,
-        scopes: ["orchestration:read", "orchestration:operate"],
+        scopes: ["orchestration:read"],
       });
 
       const ownerToken = yield* team["team.login"]({ credential: ownerLink.credential });
+      check(
+        !ownerToken.scope.split(" ").includes("orchestration:operate"),
+        "A team session must not carry the environment operate scope",
+      );
       const owner = { headers: { authorization: `Bearer ${ownerToken.access_token}` } };
       const workspaceIds = (yield* team["team.workspaces"](undefined, owner))
         .map((entry) => entry.id)

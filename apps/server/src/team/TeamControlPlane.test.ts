@@ -282,6 +282,11 @@ it.effect(
           "owner_required",
         );
       }
+      // A second workspace keeps the environment session alive across the removal.
+      yield* client["team.setMember"](
+        { workspaceId: "beta", userId: "new-user", role: "Viewer" },
+        owner,
+      );
       yield* client["team.removeMember"]({ workspaceId: "gamma", userId: "new-user" }, owner);
       assert.equal(
         rule(yield* client["team.workspace"]({ workspaceId: "gamma" }, user).pipe(Effect.flip)),
@@ -324,4 +329,25 @@ it.effect(
         "workspace_identifier_reserved",
       );
     }).pipe(Effect.provide(layer)),
+);
+
+it.effect("revokes the environment session once a removed member belongs to no workspace", () =>
+  Effect.gen(function* () {
+    const { client, owner } = yield* setup;
+    yield* client["team.createWorkspace"]({ workspaceId: "gamma", name: "Gamma" }, owner);
+    const invited = yield* client["team.invite"](
+      { workspaceId: "gamma", userId: "solo", name: "Solo", role: "Viewer" },
+      owner,
+    );
+    const token = yield* client["team.login"](invited);
+    const user = { headers: { authorization: `Bearer ${token.access_token}` } };
+    assert.equal((yield* client["team.workspace"]({ workspaceId: "gamma" }, user)).role, "Viewer");
+
+    yield* client["team.removeMember"]({ workspaceId: "gamma", userId: "solo" }, owner);
+
+    assert.equal(
+      rule(yield* client["team.workspace"]({ workspaceId: "gamma" }, user).pipe(Effect.flip)),
+      "authentication_required",
+    );
+  }).pipe(Effect.provide(layer)),
 );

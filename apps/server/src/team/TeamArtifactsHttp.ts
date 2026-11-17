@@ -1,5 +1,4 @@
 import {
-  AuthOrchestrationOperateScope,
   AuthOrchestrationReadScope,
   type AuthEnvironmentScope,
   EnvironmentAuthInvalidError,
@@ -280,7 +279,9 @@ export const layer = Layer.unwrap(
         );
         if (parsed === null) return notFound;
 
-        const session = yield* authenticate(AuthOrchestrationOperateScope);
+        // Every write below re-checks the member's role; the environment operate
+        // scope stays out of team sessions so they cannot launch host agents.
+        const session = yield* authenticate(AuthOrchestrationReadScope);
         const body = yield* readJson;
         return yield* Effect.gen(function* () {
           if (parsed.artifactId === undefined) {

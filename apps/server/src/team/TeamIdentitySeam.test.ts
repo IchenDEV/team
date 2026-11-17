@@ -69,9 +69,11 @@ it.effect("one team login token serves both the membership and artifact surfaces
         });
         const ownerLink = yield* auth.createPairingLink({
           subject: ownerSubject,
-          scopes: ["orchestration:read", "orchestration:operate"],
+          scopes: ["orchestration:read"],
         });
-        const ownerToken = (yield* team.login(ownerLink.credential)).access_token;
+        const ownerLogin = yield* team.login(ownerLink.credential);
+        assert.equal(ownerLogin.scope.includes("orchestration:operate"), false);
+        const ownerToken = ownerLogin.access_token;
         const ownerAuth = `Bearer ${ownerToken}`;
 
         assert.deepEqual(

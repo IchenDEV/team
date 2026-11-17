@@ -66,7 +66,7 @@ const program = Effect.gen(function* () {
         });
         const invitation = yield* auth.createPairingLink({
           subject: TeamControlPlane.userSubject("owner"),
-          scopes: ["orchestration:read", "orchestration:operate"],
+          scopes: ["orchestration:read"],
         });
         yield* fs.writeFileString(
           invitationPath,

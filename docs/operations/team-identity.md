@@ -56,12 +56,16 @@ node apps/server/scripts/team-bootstrap.ts CONFIG.json ENVIRONMENT_HOME OWNER_IN
 
 ## 4. 角色与令牌范围
 
-会话同时是环境会话，因此邀请时按角色签发范围：
+团队令牌只带 `orchestration:read`，任何角色都是如此。原因是它同时是这个环境的会话：一旦带上 `orchestration:operate`，成员就能绕过工作区沙箱，直接通过环境的 WebSocket 启动宿主机上的执行。
 
-- Viewer：`orchestration:read`。不能执行、不能写产物、不能改成员关系。
-- Owner / Editor：`orchestration:read` + `orchestration:operate`。
+角色由成员表在每次请求时判定：
 
-登录时会再次核对：若令牌带有执行范围而成员在**所有**工作区都已是 Viewer，登录被拒绝并删除刚签发的会话。角色被降级为 Viewer 后，已签发的会话仍带执行范围直到过期或登出；团队 RPC 与产物路由每次请求都按成员表重新判定，但环境自身的项目/线程接口只认会话范围。需要立即收紧时，让该成员登出，或由环境侧按既有认证方式重新签发凭据。
+- Viewer：只能读成员、产物与工作区；写产物、改成员、执行都返回拒绝。
+- Owner / Editor：可以写产物与执行，执行仍在工作区容器沙箱内。
+
+因此提升角色不需要重新签发凭据；降级或移除立即生效（`team.setMember` 与 `team.removeMember` 下一次请求即按新角色判定）。被移除的成员若已不属于本环境的任何工作区，其环境会话会被吊销，不再能读取本环境的项目与线程；仍属于其它工作区时保留会话。
+
+环境会话本身仍是只读信任域：它能读本环境的项目与线程，这是“一个环境一个信任域”的边界，不随团队角色变化。
 
 ## 5. 边界
 

@@ -1,5 +1,4 @@
 import {
-  AuthOrchestrationOperateScope,
   AuthOrchestrationReadScope,
   ModelSelection,
   ProjectId,
@@ -53,12 +52,6 @@ export const TeamConfig = Schema.Struct({
 });
 export type TeamConfig = typeof TeamConfig.Type;
 export const userSubject = (id: string) => `team:user:${id}`;
-// The environment session is also the artifact session, so its scopes must match
-// the role the member holds: a Viewer's session must not carry execution.
-const invitationScopes = (role: Role) =>
-  role === "Viewer"
-    ? [AuthOrchestrationReadScope]
-    : [AuthOrchestrationReadScope, AuthOrchestrationOperateScope];
 
 type Access = typeof TeamWorkspaceAccess.Type;
 type Role = typeof TeamRole.Type;
@@ -284,16 +277,10 @@ export const layer = (config: TeamConfig) =>
                 discardIssuedSession(cause).pipe(Effect.andThen(verificationFailure(cause))),
               ),
             );
-          yield* Effect.gen(function* () {
-            yield* admit(session);
-            const access = yield* storage(members.listWorkspaces(session.subject));
-            // A credential minted before a demotion can outlive the role it was issued for.
-            if (
-              !access.some((entry) => entry.role !== "Viewer") &&
-              session.scopes.includes(AuthOrchestrationOperateScope)
-            )
-              return yield* new TeamError({ rule: "authentication_required" });
-          }).pipe(Effect.onError(() => discardSession(session.sessionId)));
+          yield* admit(session).pipe(
+            Effect.andThen(storage(members.listWorkspaces(session.subject))),
+            Effect.onError(() => discardSession(session.sessionId)),
+          );
           return token;
         }),
         logout: Effect.fn("TeamControlPlane.logout")(function* (authorization) {
@@ -360,9 +347,11 @@ export const layer = (config: TeamConfig) =>
                   members.setMember(session.subject, input.workspaceId, input.userId, input.role),
                 );
                 const invitation = yield* auth
+                  // A team session must never carry the environment's operate scope:
+                  // it would authorize host execution outside the workspace sandbox.
                   .createPairingLink({
                     subject: userSubject(input.userId),
-                    scopes: invitationScopes(input.role),
+                    scopes: [AuthOrchestrationReadScope],
                   })
                   .pipe(Effect.catch(authFailure));
                 return { credential: invitation.credential };
@@ -387,6 +376,24 @@ export const layer = (config: TeamConfig) =>
           function* (authorization, workspaceId, userId) {
             const { session } = yield* owner(authorization, workspaceId);
             yield* storage(members.removeMember(session.subject, workspaceId, userId));
+            const subject = userSubject(userId);
+            const remaining = yield* storage(members.listWorkspaces(subject));
+            // The environment session reads this environment's projects without a
+            // per-request membership check, so a member who belongs to no workspace
+            // here must lose it. Sessions of members elsewhere are left alone.
+            if (remaining.length > 0) return;
+            yield* Effect.gen(function* () {
+              const active = yield* sessions.listActive();
+              yield* Effect.forEach(
+                active.filter((entry) => entry.subject === subject),
+                (entry) => sessions.revoke(entry.sessionId),
+                { discard: true },
+              );
+            }).pipe(
+              Effect.catch((cause) =>
+                Effect.logError("Team member session revocation failed", { cause, subject }),
+              ),
+            );
           },
         ),
         start: Effect.fn("TeamControlPlane.start")(function* (authorization, input) {
