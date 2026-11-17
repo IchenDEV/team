@@ -94,206 +94,206 @@ const connectionOf = (state: Pick<TeamState, "gatewayUrl" | "token">) =>
   state.token === null ? null : { baseUrl: state.gatewayUrl, token: state.token };
 
 export const useTeamStore = create<TeamState>()((set, get) => ({
-      gatewayUrl: "",
-      token: null,
-      workspaces: null,
+  gatewayUrl: "",
+  token: null,
+  workspaces: null,
+  workspacesError: null,
+  currentWorkspaceId: null,
+  members: null,
+  membersError: null,
+  artifacts: null,
+  artifactsError: null,
+  artifactsUnavailable: false,
+  artifactBaseUrl: null,
+  busy: false,
+
+  connect: async (gatewayUrl, credential) => {
+    set({ busy: true, workspacesError: null });
+    try {
+      const token = await login({ baseUrl: gatewayUrl }, credential.trim());
+      set({ gatewayUrl, token, busy: false, workspaces: null, currentWorkspaceId: null });
+      await get().loadWorkspaces();
+      return get().workspacesError === null;
+    } catch (error) {
+      set({ ...clearSession(), gatewayUrl, workspacesError: errorMessage(error), busy: false });
+      return false;
+    }
+  },
+
+  disconnect: async () => {
+    const connection = connectionOf(get());
+    set({ ...clearSession(), busy: false });
+    if (connection === null) return;
+    try {
+      await logout(connection);
+    } catch (error) {
+      // The local session is already gone; say that the server may still hold it.
+      set({ workspacesError: `已断开本地会话，但服务端登出失败：${errorMessage(error)}` });
+    }
+  },
+
+  loadWorkspaces: async () => {
+    const connection = connectionOf(get());
+    if (connection === null) return;
+    set({ busy: true, workspacesError: null });
+    try {
+      const workspaces = await listWorkspaces(connection);
+      set((state) => {
+        const stillMember =
+          state.currentWorkspaceId !== null &&
+          workspaces.some((workspace) => workspace.id === state.currentWorkspaceId);
+        return {
+          workspaces,
+          busy: false,
+          ...(stillMember || state.currentWorkspaceId === null
+            ? {}
+            : { currentWorkspaceId: null, ...clearWorkspaceScoped() }),
+        };
+      });
+    } catch (error) {
+      if (isSessionLost(error)) {
+        set({ ...clearSession(), workspacesError: errorMessage(error), busy: false });
+        return;
+      }
+      set({ workspacesError: errorMessage(error), busy: false });
+    }
+  },
+
+  selectWorkspace: (workspaceId) => {
+    set(() => ({
+      currentWorkspaceId: workspaceId,
       workspacesError: null,
-      currentWorkspaceId: null,
-      members: null,
-      membersError: null,
-      artifacts: null,
-      artifactsError: null,
-      artifactsUnavailable: false,
-      artifactBaseUrl: null,
-      busy: false,
+      // Switching drops the old tenant's rows before the new ones arrive.
+      ...clearWorkspaceScoped(),
+    }));
+    if (workspaceId !== null) {
+      void get().loadMembers();
+      void get().loadArtifacts();
+    }
+  },
 
-      connect: async (gatewayUrl, credential) => {
-        set({ busy: true, workspacesError: null });
-        try {
-          const token = await login({ baseUrl: gatewayUrl }, credential.trim());
-          set({ gatewayUrl, token, busy: false, workspaces: null, currentWorkspaceId: null });
-          await get().loadWorkspaces();
-          return get().workspacesError === null;
-        } catch (error) {
-          set({ ...clearSession(), gatewayUrl, workspacesError: errorMessage(error), busy: false });
-          return false;
-        }
-      },
+  loadMembers: async () => {
+    const state = get();
+    const connection = connectionOf(state);
+    const workspaceId = state.currentWorkspaceId;
+    if (connection === null || workspaceId === null) return;
+    set({ membersError: null });
+    try {
+      const members = await listMembers(connection, workspaceId);
+      if (get().currentWorkspaceId === workspaceId) set({ members });
+    } catch (error) {
+      if (get().currentWorkspaceId !== workspaceId) return;
+      get().handleWorkspaceAccessLost(error, "members", errorMessage(error));
+    }
+  },
 
-      disconnect: async () => {
-        const connection = connectionOf(get());
-        set({ ...clearSession(), busy: false });
-        if (connection === null) return;
-        try {
-          await logout(connection);
-        } catch (error) {
-          // The local session is already gone; say that the server may still hold it.
-          set({ workspacesError: `已断开本地会话，但服务端登出失败：${errorMessage(error)}` });
-        }
-      },
+  loadArtifacts: async () => {
+    const state = get();
+    const workspaceId = state.currentWorkspaceId;
+    const connection = connectionOf(state);
+    if (workspaceId === null || connection === null) return;
+    set({ artifactsError: null, artifactsUnavailable: false });
+    try {
+      const request = await teamArtifactRequest(connection.baseUrl, connection.token);
+      const artifacts = await listArtifacts({ ...request, workspaceId });
+      if (get().currentWorkspaceId === workspaceId) {
+        set({ artifacts, artifactBaseUrl: request.baseUrl });
+      }
+    } catch (error) {
+      if (get().currentWorkspaceId !== workspaceId) return;
+      // A server without the artifact route cannot serve this workspace's artifacts yet.
+      if (isTeamApiError(error) && error.status === 404) {
+        set({ artifactsUnavailable: true, artifacts: [] });
+        return;
+      }
+      // The members plane decides who belongs to the workspace; an artifact denial only says
+      // this environment cannot serve that member's artifacts, so it must not drop the choice.
+      set({ artifactsError: errorMessage(error) });
+    }
+  },
 
-      loadWorkspaces: async () => {
-        const connection = connectionOf(get());
-        if (connection === null) return;
-        set({ busy: true, workspacesError: null });
-        try {
-          const workspaces = await listWorkspaces(connection);
-          set((state) => {
-            const stillMember =
-              state.currentWorkspaceId !== null &&
-              workspaces.some((workspace) => workspace.id === state.currentWorkspaceId);
-            return {
-              workspaces,
-              busy: false,
-              ...(stillMember || state.currentWorkspaceId === null
-                ? {}
-                : { currentWorkspaceId: null, ...clearWorkspaceScoped() }),
-            };
-          });
-        } catch (error) {
-          if (isSessionLost(error)) {
-            set({ ...clearSession(), workspacesError: errorMessage(error), busy: false });
-            return;
-          }
-          set({ workspacesError: errorMessage(error), busy: false });
-        }
-      },
+  invite: async (input) => {
+    const state = get();
+    const connection = connectionOf(state);
+    const workspaceId = state.currentWorkspaceId;
+    if (connection === null || workspaceId === null) return null;
+    try {
+      const result = await inviteMember(connection, {
+        workspaceId,
+        userId: invitedUserId(input.name),
+        name: input.name.trim(),
+        role: input.role,
+      });
+      await get().loadMembers();
+      return result;
+    } catch (error) {
+      // Only a lost session or membership changes stored state; a plain rule stays with the form.
+      if (get().currentWorkspaceId === workspaceId && isMembershipRevocation(error)) {
+        get().handleWorkspaceAccessLost(error, "members", errorMessage(error));
+      }
+      throw error;
+    }
+  },
 
-      selectWorkspace: (workspaceId) => {
-        set(() => ({
-          currentWorkspaceId: workspaceId,
-          workspacesError: null,
-          // Switching drops the old tenant's rows before the new ones arrive.
-          ...clearWorkspaceScoped(),
-        }));
-        if (workspaceId !== null) {
-          void get().loadMembers();
-          void get().loadArtifacts();
-        }
-      },
+  setMemberRole: async (userId, role) => {
+    const state = get();
+    const connection = connectionOf(state);
+    const workspaceId = state.currentWorkspaceId;
+    if (connection === null || workspaceId === null) return false;
+    try {
+      await setMemberRole(connection, { workspaceId, userId, role });
+      if (get().currentWorkspaceId !== workspaceId) return true;
+      // The caller's own role may have changed; the Owner controls depend on it.
+      await Promise.all([get().loadMembers(), get().loadWorkspaces()]);
+      return true;
+    } catch (error) {
+      if (get().currentWorkspaceId === workspaceId) {
+        get().handleWorkspaceAccessLost(error, "members", errorMessage(error));
+      }
+      return false;
+    }
+  },
 
-      loadMembers: async () => {
-        const state = get();
-        const connection = connectionOf(state);
-        const workspaceId = state.currentWorkspaceId;
-        if (connection === null || workspaceId === null) return;
-        set({ membersError: null });
-        try {
-          const members = await listMembers(connection, workspaceId);
-          if (get().currentWorkspaceId === workspaceId) set({ members });
-        } catch (error) {
-          if (get().currentWorkspaceId !== workspaceId) return;
-          get().handleWorkspaceAccessLost(error, "members", errorMessage(error));
-        }
-      },
+  removeMember: async (userId) => {
+    const state = get();
+    const connection = connectionOf(state);
+    const workspaceId = state.currentWorkspaceId;
+    if (connection === null || workspaceId === null) return false;
+    try {
+      await removeMember(connection, { workspaceId, userId });
+      if (get().currentWorkspaceId !== workspaceId) return true;
+      await Promise.all([get().loadMembers(), get().loadWorkspaces()]);
+      return true;
+    } catch (error) {
+      if (get().currentWorkspaceId === workspaceId) {
+        get().handleWorkspaceAccessLost(error, "members", errorMessage(error));
+      }
+      return false;
+    }
+  },
 
-      loadArtifacts: async () => {
-        const state = get();
-        const workspaceId = state.currentWorkspaceId;
-        const connection = connectionOf(state);
-        if (workspaceId === null || connection === null) return;
-        set({ artifactsError: null, artifactsUnavailable: false });
-        try {
-          const request = await teamArtifactRequest(connection.baseUrl, connection.token);
-          const artifacts = await listArtifacts({ ...request, workspaceId });
-          if (get().currentWorkspaceId === workspaceId) {
-            set({ artifacts, artifactBaseUrl: request.baseUrl });
-          }
-        } catch (error) {
-          if (get().currentWorkspaceId !== workspaceId) return;
-          // A server without the artifact route cannot serve this workspace's artifacts yet.
-          if (isTeamApiError(error) && error.status === 404) {
-            set({ artifactsUnavailable: true, artifacts: [] });
-            return;
-          }
-          // The members plane decides who belongs to the workspace; an artifact denial only says
-          // this environment cannot serve that member's artifacts, so it must not drop the choice.
-          set({ artifactsError: errorMessage(error) });
-        }
-      },
-
-      invite: async (input) => {
-        const state = get();
-        const connection = connectionOf(state);
-        const workspaceId = state.currentWorkspaceId;
-        if (connection === null || workspaceId === null) return null;
-        try {
-          const result = await inviteMember(connection, {
-            workspaceId,
-            userId: invitedUserId(input.name),
-            name: input.name.trim(),
-            role: input.role,
-          });
-          await get().loadMembers();
-          return result;
-        } catch (error) {
-          // Only a lost session or membership changes stored state; a plain rule stays with the form.
-          if (get().currentWorkspaceId === workspaceId && isMembershipRevocation(error)) {
-            get().handleWorkspaceAccessLost(error, "members", errorMessage(error));
-          }
-          throw error;
-        }
-      },
-
-      setMemberRole: async (userId, role) => {
-        const state = get();
-        const connection = connectionOf(state);
-        const workspaceId = state.currentWorkspaceId;
-        if (connection === null || workspaceId === null) return false;
-        try {
-          await setMemberRole(connection, { workspaceId, userId, role });
-          if (get().currentWorkspaceId !== workspaceId) return true;
-          // The caller's own role may have changed; the Owner controls depend on it.
-          await Promise.all([get().loadMembers(), get().loadWorkspaces()]);
-          return true;
-        } catch (error) {
-          if (get().currentWorkspaceId === workspaceId) {
-            get().handleWorkspaceAccessLost(error, "members", errorMessage(error));
-          }
-          return false;
-        }
-      },
-
-      removeMember: async (userId) => {
-        const state = get();
-        const connection = connectionOf(state);
-        const workspaceId = state.currentWorkspaceId;
-        if (connection === null || workspaceId === null) return false;
-        try {
-          await removeMember(connection, { workspaceId, userId });
-          if (get().currentWorkspaceId !== workspaceId) return true;
-          await Promise.all([get().loadMembers(), get().loadWorkspaces()]);
-          return true;
-        } catch (error) {
-          if (get().currentWorkspaceId === workspaceId) {
-            get().handleWorkspaceAccessLost(error, "members", errorMessage(error));
-          }
-          return false;
-        }
-      },
-
-      /**
-       * A lost session clears everything; a lost membership clears only that workspace and keeps
-       * the token, because the gateway session is still valid for the member's other workspaces.
-       */
-      handleWorkspaceAccessLost: (error, area, message) => {
-        if (isSessionLost(error)) {
-          set(() => ({ ...clearSession(), workspacesError: message }));
-          return;
-        }
-        if (isWorkspaceAccessLost(error)) {
-          set((state) => ({
-            currentWorkspaceId: null,
-            workspacesError: message,
-            // The gateway no longer lists that workspace for this member; drop it from the list
-            // so it cannot be re-selected and denied again.
-            workspaces:
-              state.workspaces?.filter((workspace) => workspace.id !== state.currentWorkspaceId) ??
-              null,
-            ...clearWorkspaceScoped(),
-          }));
-          return;
-        }
-        set(area === "members" ? { membersError: message } : { artifactsError: message });
-      },
+  /**
+   * A lost session clears everything; a lost membership clears only that workspace and keeps
+   * the token, because the gateway session is still valid for the member's other workspaces.
+   */
+  handleWorkspaceAccessLost: (error, area, message) => {
+    if (isSessionLost(error)) {
+      set(() => ({ ...clearSession(), workspacesError: message }));
+      return;
+    }
+    if (isWorkspaceAccessLost(error)) {
+      set((state) => ({
+        currentWorkspaceId: null,
+        workspacesError: message,
+        // The gateway no longer lists that workspace for this member; drop it from the list
+        // so it cannot be re-selected and denied again.
+        workspaces:
+          state.workspaces?.filter((workspace) => workspace.id !== state.currentWorkspaceId) ??
+          null,
+        ...clearWorkspaceScoped(),
+      }));
+      return;
+    }
+    set(area === "members" ? { membersError: message } : { artifactsError: message });
+  },
 }));
