@@ -82,6 +82,30 @@ it.effect("keeps no session row for a rejected login", () =>
   }).pipe(Effect.provide(layer)),
 );
 
+it.effect("keeps no session row when the issued session is revoked before verification", () =>
+  Effect.gen(function* () {
+    const { auth, client } = yield* setup;
+    const sql = yield* SqlClient.SqlClient;
+    const rows = () =>
+      sql<{ count: number }>`SELECT COUNT(*) AS count FROM auth_sessions`.pipe(
+        Effect.map((result) => result[0]?.count ?? 0),
+      );
+    const before = yield* rows();
+    // A concurrent replace for the same subject and method revokes the row the exchange just wrote.
+    yield* sql`CREATE TRIGGER revoke_issued_team_session AFTER INSERT ON auth_sessions
+      BEGIN UPDATE auth_sessions SET revoked_at = '2000-01-01T00:00:00.000Z' WHERE session_id = NEW.session_id; END`;
+    const invitation = yield* auth.createPairingLink({
+      subject: TeamControlPlane.userSubject("alice"),
+      scopes: ["orchestration:read"],
+    });
+    assert.equal(
+      rule(yield* client["team.login"]({ credential: invitation.credential }).pipe(Effect.flip)),
+      "authentication_required",
+    );
+    assert.equal(yield* rows(), before, "a session revoked before verification leaves no row");
+  }).pipe(Effect.provide(layer)),
+);
+
 it.effect("cannot mint or re-mint an identity that exists in another workspace", () =>
   Effect.gen(function* () {
     const { repository, client, login, owner } = yield* setup;
