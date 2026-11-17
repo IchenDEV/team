@@ -21,10 +21,6 @@ const formatBytes = (bytes: number): string => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-/** Artifact paths belong to the environment origin, which is not always the page origin. */
-const artifactUrl = (baseUrl: string | null, path: string): string =>
-  `${(baseUrl ?? window.location.origin).replace(/\/$/, "")}${path}`;
-
 function TeamErrorNote({ message }: { message: string | null }) {
   if (message === null) return null;
   return (
@@ -323,7 +319,36 @@ function ArtifactsSection() {
   const artifacts = useTeamStore((state) => state.artifacts);
   const artifactsError = useTeamStore((state) => state.artifactsError);
   const artifactsUnavailable = useTeamStore((state) => state.artifactsUnavailable);
-  const artifactBaseUrl = useTeamStore((state) => state.artifactBaseUrl);
+  const fetchArtifact = useTeamStore((state) => state.fetchArtifact);
+
+  /**
+   * Preview and download go through the member session: an anchor navigation cannot carry the
+   * bearer, and a member who only has that bearer has no environment cookie for the origin.
+   */
+  const openArtifact = (artifact: TeamArtifact, action: "preview" | "download") => {
+    // The preview tab is opened before the fetch; browsers block window.open after an await.
+    const pending = action === "preview" ? window.open("", "_blank") : null;
+    if (pending) pending.opener = null;
+    void fetchArtifact(action === "preview" ? artifact.previewPath : artifact.downloadPath)
+      .then(async (response) => {
+        const url = URL.createObjectURL(await response.blob());
+        // Delay revocation so the new tab or the download can still read the blob.
+        setTimeout(() => URL.revokeObjectURL(url), 30_000);
+        if (action === "preview") {
+          if (pending) pending.location.href = url;
+          else window.open(url, "_blank", "noopener,noreferrer");
+          return;
+        }
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = artifact.name;
+        anchor.click();
+      })
+      .catch((error: unknown) => {
+        pending?.close();
+        toastManager.add({ title: error instanceof Error ? error.message : String(error) });
+      });
+  };
 
   const content = (() => {
     if (artifactsUnavailable) {
@@ -357,23 +382,22 @@ function ArtifactsSection() {
               </span>
             </span>
             <Badge variant="secondary">v{artifact.version}</Badge>
-            <a
-              href={artifactUrl(artifactBaseUrl, artifact.previewPath)}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              type="button"
+              onClick={() => openArtifact(artifact, "preview")}
               aria-label={`Open ${artifact.name}`}
               className="text-icon-muted hover:text-foreground"
             >
               <ExternalLinkIcon className="size-4" />
-            </a>
-            <a
-              href={artifactUrl(artifactBaseUrl, artifact.downloadPath)}
-              download
+            </button>
+            <button
+              type="button"
+              onClick={() => openArtifact(artifact, "download")}
               aria-label={`Download ${artifact.name}`}
               className="text-icon-muted hover:text-foreground"
             >
               <DownloadIcon className="size-4" />
-            </a>
+            </button>
           </li>
         ))}
       </ul>

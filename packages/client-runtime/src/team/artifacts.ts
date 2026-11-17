@@ -27,10 +27,6 @@ export const TEAM_ARTIFACTS_PATH = "/api/team/workspaces";
 export const teamArtifactsPath = (workspaceId: string): string =>
   `${TEAM_ARTIFACTS_PATH}/${encodeURIComponent(workspaceId)}/artifacts`;
 
-/** Absolute URL for a `previewPath`/`downloadPath` the artifact route returned. */
-export const teamArtifactUrl = (baseUrl: string, path: string): string =>
-  `${baseUrl.replace(/\/+$/, "")}${path}`;
-
 const readErrorRule = (body: unknown, status: number): string =>
   typeof body === "object" && body !== null && "error" in body
     ? String((body as { error: unknown }).error)
@@ -45,7 +41,10 @@ export interface TeamArtifactRequest {
   readonly fetchImpl?: typeof fetch;
 }
 
-async function artifactRequest<A>(input: TeamArtifactRequest, path: string): Promise<A> {
+async function requestArtifact(
+  input: Omit<TeamArtifactRequest, "workspaceId">,
+  path: string,
+): Promise<Response> {
   const fetchImpl = input.fetchImpl ?? fetch;
   const authorization = input.authorization ?? null;
   const response = await fetchImpl(`${input.baseUrl.replace(/\/+$/, "")}${path}`, {
@@ -62,6 +61,11 @@ async function artifactRequest<A>(input: TeamArtifactRequest, path: string): Pro
       status: response.status,
     });
   }
+  return response;
+}
+
+async function artifactRequest<A>(input: TeamArtifactRequest, path: string): Promise<A> {
+  const response = await requestArtifact(input, path);
   // A server without the artifact route answers with the app shell and a 200, so the content
   // type is what tells a missing route from a real answer.
   const contentType = response.headers.get("content-type") ?? "";
@@ -83,4 +87,17 @@ export async function listArtifacts(
     teamArtifactsPath(input.workspaceId),
   );
   return body.artifacts;
+}
+
+/**
+ * Fetch a `previewPath`/`downloadPath` with the member credential. Content is not JSON, so the
+ * route-availability check does not apply; the caller turns the body into a blob URL. A member
+ * whose only credential is the team bearer cannot open these paths as plain navigations, which
+ * is why they are fetched here instead of linked.
+ */
+export async function fetchArtifactContent(
+  input: Omit<TeamArtifactRequest, "workspaceId">,
+  path: string,
+): Promise<Response> {
+  return requestArtifact(input, path);
 }

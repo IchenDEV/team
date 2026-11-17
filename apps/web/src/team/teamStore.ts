@@ -1,4 +1,5 @@
 import {
+  fetchArtifactContent,
   isMembershipRevocation,
   isSessionLost,
   isTeamApiError,
@@ -51,8 +52,6 @@ export interface TeamState {
   readonly artifacts: ReadonlyArray<TeamArtifact> | null;
   readonly artifactsError: string | null;
   readonly artifactsUnavailable: boolean;
-  /** Origin of the environment that serves the artifact route; links must not use the page origin. */
-  readonly artifactBaseUrl: string | null;
   readonly busy: boolean;
 
   readonly connect: (gatewayUrl: string, credential: string) => Promise<boolean>;
@@ -61,6 +60,8 @@ export interface TeamState {
   readonly selectWorkspace: (workspaceId: string | null) => void;
   readonly loadMembers: () => Promise<void>;
   readonly loadArtifacts: () => Promise<void>;
+  /** GET an artifact preview/download path with the member credential. */
+  readonly fetchArtifact: (path: string) => Promise<Response>;
   readonly invite: (input: {
     name: string;
     role: TeamRole;
@@ -104,7 +105,6 @@ export const useTeamStore = create<TeamState>()((set, get) => ({
   artifacts: null,
   artifactsError: null,
   artifactsUnavailable: false,
-  artifactBaseUrl: null,
   busy: false,
 
   connect: async (gatewayUrl, credential) => {
@@ -197,7 +197,7 @@ export const useTeamStore = create<TeamState>()((set, get) => ({
       const request = await teamArtifactRequest(connection.baseUrl, connection.token);
       const artifacts = await listArtifacts({ ...request, workspaceId });
       if (get().currentWorkspaceId === workspaceId) {
-        set({ artifacts, artifactBaseUrl: request.baseUrl });
+        set({ artifacts });
       }
     } catch (error) {
       if (get().currentWorkspaceId !== workspaceId) return;
@@ -210,6 +210,13 @@ export const useTeamStore = create<TeamState>()((set, get) => ({
       // this environment cannot serve that member's artifacts, so it must not drop the choice.
       set({ artifactsError: errorMessage(error) });
     }
+  },
+
+  fetchArtifact: async (path) => {
+    const connection = connectionOf(get());
+    if (connection === null) throw new Error("The team session is not connected.");
+    const request = await teamArtifactRequest(connection.baseUrl, connection.token);
+    return fetchArtifactContent(request, path);
   },
 
   invite: async (input) => {

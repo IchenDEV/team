@@ -18,6 +18,7 @@ vi.mock("@t3tools/client-runtime/team", async (importOriginal) => {
     listWorkspaces: vi.fn(),
     listMembers: vi.fn(),
     listArtifacts: vi.fn(),
+    fetchArtifactContent: vi.fn(),
     inviteMember: vi.fn(),
     logout: vi.fn(),
   };
@@ -192,7 +193,46 @@ describe("teamStore", () => {
       authorization: "team-token",
       workspaceId: "ws_a",
     });
-    expect(useTeamStore.getState().artifactBaseUrl).toBe("http://environment.test");
+  });
+
+  it("fetches artifact content with the team bearer on the environment origin", async () => {
+    const { fetchArtifactContent } = await team();
+    vi.mocked(fetchArtifactContent).mockResolvedValue(new Response("content"));
+    useTeamStore.setState({
+      token: "team-token",
+      gatewayUrl: "http://environment.test",
+      currentWorkspaceId: "ws_a",
+    });
+
+    await useTeamStore.getState().fetchArtifact("/api/team/workspaces/ws_a/artifacts/a/preview");
+
+    expect(vi.mocked(fetchArtifactContent).mock.calls[0]?.[0]).toMatchObject({
+      baseUrl: "http://environment.test",
+      authorization: "team-token",
+    });
+    expect(vi.mocked(fetchArtifactContent).mock.calls[0]?.[1]).toBe(
+      "/api/team/workspaces/ws_a/artifacts/a/preview",
+    );
+  });
+
+  it("serves non-JSON artifact content that the JSON list gate would reject", async () => {
+    const actual = await vi.importActual<typeof import("@t3tools/client-runtime/team")>(
+      "@t3tools/client-runtime/team",
+    );
+    const response = await actual.fetchArtifactContent(
+      {
+        baseUrl: "http://environment.test",
+        authorization: "token",
+        fetchImpl: (async () =>
+          new Response("<!doctype html><title>artifact</title>", {
+            status: 200,
+            headers: { "content-type": "text/html" },
+          })) as unknown as typeof fetch,
+      },
+      "/api/team/workspaces/ws_a/artifacts/a/preview",
+    );
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("artifact");
   });
 
   it("treats a non-JSON answer as a missing artifact route", async () => {
