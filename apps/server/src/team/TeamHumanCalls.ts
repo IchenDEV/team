@@ -285,7 +285,17 @@ export const layer = (options: HumanCallRelayOptions) =>
       });
 
       const tick = Effect.gen(function* () {
-        yield* Effect.forEach(options.workspaceIds, scanWorkspace, { discard: true });
+        yield* Effect.forEach(
+          options.workspaceIds,
+          (workspaceId) =>
+            scanWorkspace(workspaceId).pipe(
+              Effect.catch((cause) =>
+                Effect.logError("human_call workspace scan failed", { workspaceId, cause }),
+              ),
+            ),
+          { discard: true },
+        );
+        // Expiry runs even when a scan failed: a pending call always reaches a deadline.
         yield* expireDue;
       }).pipe(Effect.catch((cause) => Effect.logError("human_call relay tick failed", { cause })));
 

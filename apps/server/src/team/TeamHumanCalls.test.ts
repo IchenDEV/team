@@ -205,3 +205,30 @@ it.effect("removing a member cancels the calls addressed to them", () =>
     assert.equal((yield* calls.pendingForCallee(WORKSPACE, "alice")).length, 0);
   }).pipe(Effect.provide(layer)),
 );
+
+it.effect("a duplicate call id is rejected without stopping expiry for everyone", () =>
+  Effect.gen(function* () {
+    const { fs, relay, readState, raise } = yield* setup;
+    clock.now = Date.parse("2026-11-18T05:00:00.000Z");
+    const request = { runId: `${runId}-dup`, to: "alice", question: "First?" };
+    yield* raise("call-dup", request);
+    // A second run writes the same id: the file is rejected, not thrown out of the tick.
+    yield* fs.writeFileString(
+      requestPath(root, "call-dup"),
+      JSON.stringify({ ...request, question: "Second?" }),
+    );
+    yield* relay.tick();
+    assert.equal(JSON.parse(yield* readState("call-dup")).question, "First?");
+
+    // A call raised afterwards still reaches its deadline, so expiry was not blocked.
+    yield* raise("call-after-dup", {
+      runId: `${runId}-dup-after`,
+      to: "alice",
+      question: "Later?",
+      timeoutSeconds: 30,
+    });
+    clock.now += 31_000;
+    yield* relay.tick();
+    assert.equal(JSON.parse(yield* readState("call-after-dup")).state, "expired");
+  }).pipe(Effect.provide(layer)),
+);
