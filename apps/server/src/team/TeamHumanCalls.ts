@@ -297,7 +297,7 @@ export const layer = (options: HumanCallRelayOptions) =>
         );
         // Expiry runs even when a scan failed: a pending call always reaches a deadline.
         yield* expireDue;
-      }).pipe(Effect.catch((cause) => Effect.logError("human_call relay tick failed", { cause })));
+      });
 
       const cancelAndDeliver = (cancelled: ReadonlyArray<HumanCall>) =>
         Effect.forEach(cancelled, (call) => writeState(call.workspaceId, stateOf(call)), {
