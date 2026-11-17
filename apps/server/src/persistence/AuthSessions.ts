@@ -120,6 +120,9 @@ export class AuthSessionRepository extends Context.Service<
     readonly revoke: (
       input: RevokeAuthSessionInput,
     ) => Effect.Effect<boolean, AuthSessionRepositoryError>;
+    readonly delete: (
+      input: GetAuthSessionByIdInput,
+    ) => Effect.Effect<boolean, AuthSessionRepositoryError>;
     readonly revokeAllExcept: (
       input: RevokeOtherAuthSessionsInput,
     ) => Effect.Effect<ReadonlyArray<AuthSessionId>, AuthSessionRepositoryError>;
@@ -349,6 +352,17 @@ export const make = Effect.gen(function* () {
       `,
   });
 
+  const deleteSessionRows = SqlSchema.findAll({
+    Request: GetAuthSessionByIdInput,
+    Result: Schema.Struct({ sessionId: AuthSessionId }),
+    execute: ({ sessionId }) =>
+      sql`
+        DELETE FROM auth_sessions
+        WHERE session_id = ${sessionId}
+        RETURNING session_id AS "sessionId"
+      `,
+  });
+
   const proofKeyThumbprintRows = SqlSchema.findAll({
     Request: GetAuthSessionByIdInput,
     Result: Schema.Struct({ proofKeyThumbprint: Schema.String }),
@@ -497,6 +511,18 @@ export const make = Effect.gen(function* () {
       Effect.map((rows) => rows.length > 0),
     );
 
+  const deleteSession: AuthSessionRepository["Service"]["delete"] = (input) =>
+    deleteSessionRows(input).pipe(
+      Effect.mapError(
+        toPersistenceSqlOrDecodeError(
+          "AuthSessionRepository.delete:query",
+          "AuthSessionRepository.delete:decodeRows",
+          { sessionId: input.sessionId },
+        ),
+      ),
+      Effect.map((rows) => rows.length > 0),
+    );
+
   const revokeAllExcept: AuthSessionRepository["Service"]["revokeAllExcept"] = (input) =>
     revokeOtherSessionRows(input).pipe(
       Effect.mapError(
@@ -553,6 +579,7 @@ export const make = Effect.gen(function* () {
     getById,
     listActive,
     revoke,
+    delete: deleteSession,
     revokeAllExcept,
     setLastConnectedAt,
     getProofKeyThumbprint,

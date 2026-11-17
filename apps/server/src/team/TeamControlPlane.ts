@@ -12,10 +12,11 @@ import {
   TeamRole,
   ThreadId,
   WsRpcGroup,
+  type AuthAccessTokenResult,
+  type AuthSessionId,
   type TeamReadInput,
   type TeamRun,
   type TeamStartInput,
-  type AuthAccessTokenResult,
 } from "@t3tools/contracts";
 import * as NodeSocket from "@effect/platform-node/NodeSocket";
 import * as Context from "effect/Context";
@@ -185,27 +186,47 @@ export const layer = (config: TeamConfig) =>
       const sessions = yield* SessionStore.SessionStore;
       const auth = yield* EnvironmentAuth.EnvironmentAuth;
       const sql = yield* SqlClient.SqlClient;
-      const authenticate = Effect.fn("TeamControlPlane.authenticate")(function* (
+      const verificationFailure = (cause: SessionStore.SessionCredentialError) =>
+        SessionStore.isSessionCredentialInvalidError(cause)
+          ? Effect.fail(new TeamError({ rule: "authentication_required" }))
+          : Effect.logError("Team session verification failed", { cause }).pipe(
+              Effect.andThen(Effect.fail(new TeamError({ rule: "storage_failure" }))),
+            );
+      const verifySession = Effect.fn("TeamControlPlane.verifySession")(function* (
         authorization: string | undefined,
       ) {
         if (!authorization?.startsWith("Bearer "))
           return yield* new TeamError({ rule: "authentication_required" });
-        const session = yield* sessions
+        return yield* sessions
           .verify(authorization.slice(7))
-          .pipe(
-            Effect.catch((cause) =>
-              SessionStore.isSessionCredentialInvalidError(cause)
-                ? Effect.fail(new TeamError({ rule: "authentication_required" }))
-                : Effect.logError("Team session verification failed", { cause }).pipe(
-                    Effect.andThen(Effect.fail(new TeamError({ rule: "storage_failure" }))),
-                  ),
-            ),
-          );
+          .pipe(Effect.catch(verificationFailure));
+      });
+      const admit = Effect.fn("TeamControlPlane.admit")(function* (
+        session: SessionStore.VerifiedSession,
+      ) {
         // DPoP needs a verified proof, and MCP has its own audience; this bearer-only gateway cannot accept either.
         if (session.method !== "bearer-access-token" || session.subject === "mcp-client")
           return yield* new TeamError({ rule: "authentication_required" });
         return session;
       });
+      const authenticate = Effect.fn("TeamControlPlane.authenticate")(function* (
+        authorization: string | undefined,
+      ) {
+        return yield* admit(yield* verifySession(authorization));
+      });
+      const discardSession = (sessionId: AuthSessionId) =>
+        sessions
+          .delete(sessionId)
+          .pipe(
+            Effect.catch((cause) =>
+              Effect.logError("Team login session cleanup failed", { cause }),
+            ),
+          );
+      // A token this login just received still names its row when verification rejects it.
+      const discardIssuedSession = (cause: SessionStore.SessionCredentialError) =>
+        "sessionId" in cause && cause.sessionId !== undefined
+          ? discardSession(cause.sessionId)
+          : Effect.void;
       const authorize = Effect.fn("TeamControlPlane.authorize")(function* (
         authorization: string | undefined,
         workspaceId: string,
@@ -275,8 +296,19 @@ export const layer = (config: TeamConfig) =>
               deviceType: "unknown",
             })
             .pipe(Effect.catch(authFailure));
-          const session = yield* authenticate(`Bearer ${token.access_token}`);
-          yield* storage(members.listWorkspaces(session.subject));
+          // The exchange already wrote the session row, so every check below that rejects this
+          // login must drop it; a revoked row would still hold the subject until its TTL.
+          const session = yield* sessions
+            .verify(token.access_token)
+            .pipe(
+              Effect.catch((cause) =>
+                discardIssuedSession(cause).pipe(Effect.andThen(verificationFailure(cause))),
+              ),
+            );
+          yield* admit(session).pipe(
+            Effect.andThen(storage(members.listWorkspaces(session.subject))),
+            Effect.onError(() => discardSession(session.sessionId)),
+          );
           return token;
         }),
         logout: Effect.fn("TeamControlPlane.logout")(function* (authorization) {

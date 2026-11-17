@@ -10,6 +10,7 @@ import * as TeamRuntime from "./TeamRuntime.ts";
 import * as TeamMemberships from "../persistence/TeamMemberships.ts";
 import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
 import * as ServerConfig from "../config.ts";
+import * as SqlClient from "effect/sql/SqlClient";
 
 const config: TeamControlPlane.TeamConfig = {
   workspaces: ["alpha", "beta", "gamma"].map((id) => ({
@@ -46,12 +47,64 @@ const setup = Effect.gen(function* () {
     const token = yield* client["team.login"]({ credential: invitation.credential });
     return { headers: { authorization: `Bearer ${token.access_token}` } };
   });
-  return { repository, client, login, owner: yield* login("owner") };
+  return { repository, client, auth, login, owner: yield* login("owner") };
 });
 const rule = (error: unknown) => {
   assert.instanceOf(error, TeamError);
   return error.rule;
 };
+
+it.effect("keeps no session row for a rejected login", () =>
+  Effect.gen(function* () {
+    const { auth, client, login } = yield* setup;
+    const sql = yield* SqlClient.SqlClient;
+    const count = Effect.fn("test.sessionRowCount")(function* () {
+      const rows = yield* sql<{ count: number }>`SELECT COUNT(*) AS count FROM auth_sessions`;
+      return rows[0]?.count ?? 0;
+    });
+    const before = yield* count();
+    for (const [subject, expected] of [
+      [TeamControlPlane.userSubject("outsider"), "invited_user_required"],
+      ["mcp-client", "authentication_required"],
+    ] as const) {
+      const invitation = yield* auth.createPairingLink({
+        subject,
+        scopes: ["orchestration:read"],
+      });
+      assert.equal(
+        rule(yield* client["team.login"]({ credential: invitation.credential }).pipe(Effect.flip)),
+        expected,
+      );
+      assert.equal(yield* count(), before, `${expected} must leave no session row`);
+    }
+    yield* login("alice");
+    assert.equal(yield* count(), before + 1, "an accepted login still issues one session");
+  }).pipe(Effect.provide(layer)),
+);
+
+it.effect("keeps no session row when the issued session is revoked before verification", () =>
+  Effect.gen(function* () {
+    const { auth, client } = yield* setup;
+    const sql = yield* SqlClient.SqlClient;
+    const rows = () =>
+      sql<{ count: number }>`SELECT COUNT(*) AS count FROM auth_sessions`.pipe(
+        Effect.map((result) => result[0]?.count ?? 0),
+      );
+    const before = yield* rows();
+    // A concurrent replace for the same subject and method revokes the row the exchange just wrote.
+    yield* sql`CREATE TRIGGER revoke_issued_team_session AFTER INSERT ON auth_sessions
+      BEGIN UPDATE auth_sessions SET revoked_at = '2000-01-01T00:00:00.000Z' WHERE session_id = NEW.session_id; END`;
+    const invitation = yield* auth.createPairingLink({
+      subject: TeamControlPlane.userSubject("alice"),
+      scopes: ["orchestration:read"],
+    });
+    assert.equal(
+      rule(yield* client["team.login"]({ credential: invitation.credential }).pipe(Effect.flip)),
+      "authentication_required",
+    );
+    assert.equal(yield* rows(), before, "a session revoked before verification leaves no row");
+  }).pipe(Effect.provide(layer)),
+);
 
 it.effect("cannot mint or re-mint an identity that exists in another workspace", () =>
   Effect.gen(function* () {
