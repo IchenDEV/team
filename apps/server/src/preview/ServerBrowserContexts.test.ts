@@ -74,6 +74,43 @@ const withLauncher = () => {
   };
 };
 
+// Playwright resolves the launch on Chromium's "DevTools listening" stderr
+// line, which Chromium flushes before writing DevToolsActivePort into the
+// profile. Chromium then creates the file before writing the port line, so
+// wait for the complete line itself, and fail if the browser exits first.
+const devToolsActivePort = (context: BrowserContext, userDataDir: string) =>
+  new Promise<string>((resolve, reject) => {
+    const file = NodePath.join(userDataDir, "DevToolsActivePort");
+    const onClose = () =>
+      settle(() =>
+        reject(new Error("The desktop browser exited before publishing DevToolsActivePort.")),
+      );
+    let done = false;
+    const settle = (settled: () => void) => {
+      if (done) return;
+      done = true;
+      watcher.close();
+      context.off("close", onClose);
+      settled();
+    };
+    const check = () => {
+      let content: string;
+      try {
+        content = NodeFS.readFileSync(file, "utf8");
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+        settle(() => reject(error));
+        return;
+      }
+      const newline = content.indexOf("\n");
+      if (newline > 0) settle(() => resolve(content.slice(0, newline)));
+    };
+    const watcher = NodeFS.watch(userDataDir, check);
+    watcher.once("error", (error) => settle(() => reject(error)));
+    context.once("close", onClose);
+    check();
+  });
+
 beforeEach(() => {
   launches.launch.mockReset();
   launches.persistent.mockReset();
@@ -363,10 +400,7 @@ describe("ServerBrowserContexts", () => {
         args: ["--remote-debugging-port=0"],
       });
       try {
-        const [port] = NodeFS.readFileSync(
-          NodePath.join(userDataDir, "DevToolsActivePort"),
-          "utf8",
-        ).split("\n");
+        const port = await devToolsActivePort(desktop, userDataDir);
         const { browser, page } = await pool.connectDesktopPage(`http://127.0.0.1:${port}`);
         try {
           const file = NodePath.join(directory, "large.bin");
@@ -389,6 +423,48 @@ describe("ServerBrowserContexts", () => {
         await pool.close();
         await desktop.close();
       }
+    } finally {
+      NodeFS.rmSync(directory, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("devToolsActivePort", () => {
+  it("resolves with the port when the file is already complete", async () => {
+    const directory = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "t3-devtools-port-"));
+    try {
+      NodeFS.writeFileSync(
+        NodePath.join(directory, "DevToolsActivePort"),
+        "12765\n/devtools/browser/a",
+      );
+      const context = new NodeEvents.EventEmitter() as unknown as BrowserContext;
+      await expect(devToolsActivePort(context, directory)).resolves.toBe("12765");
+    } finally {
+      NodeFS.rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("waits through an existing empty file for the complete port line", async () => {
+    const directory = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "t3-devtools-port-"));
+    try {
+      const file = NodePath.join(directory, "DevToolsActivePort");
+      NodeFS.writeFileSync(file, "");
+      const context = new NodeEvents.EventEmitter() as unknown as BrowserContext;
+      const port = devToolsActivePort(context, directory);
+      NodeFS.writeFileSync(file, "12766\n/devtools/browser/b");
+      await expect(port).resolves.toBe("12766");
+    } finally {
+      NodeFS.rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects when the browser context closes before the file is published", async () => {
+    const directory = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "t3-devtools-port-"));
+    try {
+      const events = new NodeEvents.EventEmitter();
+      const port = devToolsActivePort(events as unknown as BrowserContext, directory);
+      events.emit("close");
+      await expect(port).rejects.toThrow("DevToolsActivePort");
     } finally {
       NodeFS.rmSync(directory, { recursive: true, force: true });
     }
