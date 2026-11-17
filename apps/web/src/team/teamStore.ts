@@ -1,4 +1,5 @@
 import {
+  isMembershipRevocation,
   isSessionLost,
   isTeamApiError,
   isWorkspaceAccessLost,
@@ -167,6 +168,7 @@ export const useTeamStore = create<TeamState>()(
       selectWorkspace: (workspaceId) => {
         set(() => ({
           currentWorkspaceId: workspaceId,
+          workspacesError: null,
           // Switching drops the old tenant's rows before the new ones arrive.
           ...clearWorkspaceScoped(),
         }));
@@ -221,14 +223,22 @@ export const useTeamStore = create<TeamState>()(
         const connection = connectionOf(state);
         const workspaceId = state.currentWorkspaceId;
         if (connection === null || workspaceId === null) return null;
-        const result = await inviteMember(connection, {
-          workspaceId,
-          userId: invitedUserId(input.name),
-          name: input.name.trim(),
-          role: input.role,
-        });
-        await get().loadMembers();
-        return result;
+        try {
+          const result = await inviteMember(connection, {
+            workspaceId,
+            userId: invitedUserId(input.name),
+            name: input.name.trim(),
+            role: input.role,
+          });
+          await get().loadMembers();
+          return result;
+        } catch (error) {
+          // Only a lost session or membership changes stored state; a plain rule stays with the form.
+          if (get().currentWorkspaceId === workspaceId && isMembershipRevocation(error)) {
+            get().handleWorkspaceAccessLost(error, "members", errorMessage(error));
+          }
+          throw error;
+        }
       },
 
       setMemberRole: async (userId, role) => {
@@ -278,9 +288,14 @@ export const useTeamStore = create<TeamState>()(
           return;
         }
         if (isWorkspaceAccessLost(error)) {
-          set(() => ({
+          set((state) => ({
             currentWorkspaceId: null,
             workspacesError: message,
+            // The gateway no longer lists that workspace for this member; drop it from the list
+            // so it cannot be re-selected and denied again.
+            workspaces:
+              state.workspaces?.filter((workspace) => workspace.id !== state.currentWorkspaceId) ??
+              null,
             ...clearWorkspaceScoped(),
           }));
           return;

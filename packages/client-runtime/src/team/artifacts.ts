@@ -40,7 +40,7 @@ export interface TeamArtifactRequest {
   /** Origin of the environment server that owns the artifact route. */
   readonly baseUrl: string;
   readonly workspaceId: string;
-  /** Bearer for the desktop shell; same-origin browser sessions ride the cookie instead. */
+  /** Team session bearer; the same identity the member list uses. */
   readonly authorization?: string | null;
   readonly fetchImpl?: typeof fetch;
 }
@@ -60,6 +60,16 @@ async function artifactRequest<A>(input: TeamArtifactRequest, path: string): Pro
       message: `Team artifact request failed: ${rule} (${response.status})`,
       rule,
       status: response.status,
+    });
+  }
+  // A server without the artifact route answers with the app shell and a 200, so the content
+  // type is what tells a missing route from a real answer.
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    throw new TeamApiError({
+      message: "Shared artifacts are not available on this environment.",
+      rule: "artifact_route_unavailable",
+      status: 404,
     });
   }
   return (await response.json()) as A;
