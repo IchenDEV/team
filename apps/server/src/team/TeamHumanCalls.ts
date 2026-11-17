@@ -173,8 +173,14 @@ export const layer = (options: HumanCallRelayOptions) =>
           )
           .pipe(Effect.ignore);
 
+      // A rejected request may only settle its own unwritten id: the calls directory is
+      // run-writable, so naming a live call must never overwrite that call's state file.
       const reject = (workspaceId: string, callId: string, reason: string) =>
-        writeState(workspaceId, { callId, state: "rejected", reason }).pipe(
+        calls.exists(workspaceId, callId).pipe(
+          Effect.orElseSucceed(() => true),
+          Effect.flatMap((taken) =>
+            taken ? Effect.void : writeState(workspaceId, { callId, state: "rejected", reason }),
+          ),
           Effect.andThen(settleFile(workspaceId, callId, "rejected")),
         );
 

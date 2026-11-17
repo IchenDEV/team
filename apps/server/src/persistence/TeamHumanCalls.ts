@@ -112,6 +112,8 @@ export class TeamHumanCallRepository extends Context.Service<
       workspaceId: string,
     ) => Effect.Effect<ReadonlyArray<HumanCall>, StoreError>;
     readonly pendingByRun: (runId: string) => Effect.Effect<ReadonlyArray<HumanCall>, StoreError>;
+    /** True when this workspace already holds a row for the id, in any state. */
+    readonly exists: (workspaceId: string, id: string) => Effect.Effect<boolean, StoreError>;
     readonly due: (now: number) => Effect.Effect<ReadonlyArray<HumanCall>, StoreError>;
     readonly countPending: (
       workspaceId: string,
@@ -278,6 +280,12 @@ const make = Effect.gen(function* () {
         Effect.mapError(toPersistenceSqlError("TeamHumanCallRepository.pendingByRun")),
         decodeRows(decodeCalls, "TeamHumanCallRepository.pendingByRun"),
       );
+    }),
+    exists: Effect.fn("TeamHumanCallRepository.exists")(function* (workspaceId, id) {
+      const rows = yield* sql<{ id: string }>`
+        SELECT id FROM team_human_calls WHERE workspace_id = ${workspaceId} AND id = ${id}
+      `.pipe(Effect.mapError(toPersistenceSqlError("TeamHumanCallRepository.exists")));
+      return rows.length > 0;
     }),
     due: Effect.fn("TeamHumanCallRepository.due")(function* (now) {
       return yield* sql<Record<string, unknown>>`

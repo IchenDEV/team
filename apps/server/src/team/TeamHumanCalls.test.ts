@@ -232,3 +232,21 @@ it.effect("a duplicate call id is rejected without stopping expiry for everyone"
     assert.equal(JSON.parse(yield* readState("call-after-dup")).state, "expired");
   }).pipe(Effect.provide(layer)),
 );
+
+it.effect("a rejected request never overwrites a live call's state file", () =>
+  Effect.gen(function* () {
+    const { fs, relay, readState, raise } = yield* setup;
+    clock.now = Date.parse("2026-11-18T06:00:00.000Z");
+    yield* raise("call-live", { runId: `${runId}-live`, to: "alice", question: "Live?" });
+    // A file that names the live call but would be rejected (outsider callee) must not
+    // rewrite the state the waiting run is polling.
+    yield* fs.writeFileString(
+      requestPath(root, "call-live"),
+      JSON.stringify({ runId: `${runId}-evil`, to: "dave", question: "Fake?" }),
+    );
+    yield* relay.tick();
+    const state = JSON.parse(yield* readState("call-live"));
+    assert.equal(state.state, "pending");
+    assert.equal(state.question, "Live?");
+  }).pipe(Effect.provide(layer)),
+);
