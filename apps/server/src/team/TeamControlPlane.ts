@@ -1,8 +1,5 @@
 import {
-  CommandId,
-  MessageId,
   ModelSelection,
-  ORCHESTRATION_V2_WS_METHODS,
   ProjectId,
   TeamError,
   TeamId,
@@ -10,15 +7,12 @@ import {
   TeamWorkspaceAccess,
   TeamMember,
   TeamRole,
-  ThreadId,
-  WsRpcGroup,
   type AuthAccessTokenResult,
   type AuthSessionId,
   type TeamReadInput,
   type TeamRun,
   type TeamStartInput,
 } from "@t3tools/contracts";
-import * as NodeSocket from "@effect/platform-node/NodeSocket";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -26,14 +20,16 @@ import * as Schema from "effect/Schema";
 import * as Schedule from "effect/Schedule";
 import * as Stream from "effect/Stream";
 import * as SqlClient from "effect/sql/SqlClient";
-import { RpcClient, RpcSerialization } from "effect/rpc";
-import type * as RpcGroup from "effect/rpc/RpcGroup";
-import type { RpcClientError } from "effect/rpc/RpcClientError";
 import * as TeamMemberships from "../persistence/TeamMemberships.ts";
 import * as SessionStore from "../auth/SessionStore.ts";
 import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
 import type { ManagedPolicyRefusedError } from "../policy/managedLimits.ts";
 import { PersistenceDecodeError, PersistenceSqlError } from "../persistence/Errors.ts";
+import {
+  TeamExecutionBoundary,
+  scopedRunId,
+  type SandboxWorkspace,
+} from "./TeamExecutionBoundary.ts";
 
 const isTeamError = Schema.is(TeamError);
 const Workspace = Schema.Struct({
@@ -42,8 +38,17 @@ const Workspace = Schema.Struct({
   modelSelection: ModelSelection,
   rpcUrl: Schema.String,
   bearer: Schema.String.check(Schema.isMinLength(32)),
+  // Restricted credential scope injected into this workspace's sandbox only;
+  // never shared across tenants. networkMode defaults to a fully cut network.
+  credentials: Schema.optional(Schema.Record(Schema.String, Schema.String)),
+  networkMode: Schema.optional(Schema.Literals(["none", "bridge"])),
 });
-export const TeamConfig = Schema.Struct({ workspaces: Schema.Array(Workspace) });
+// Runs execute in a per-workspace container sandbox under this state directory;
+// when it is absent the boundary fails closed instead of falling back to the host.
+export const TeamConfig = Schema.Struct({
+  workspaces: Schema.Array(Workspace),
+  sandboxStateDir: Schema.optional(Schema.String),
+});
 export type TeamConfig = typeof TeamConfig.Type;
 export const userSubject = (id: string) => `team:user:${id}`;
 
@@ -114,33 +119,20 @@ export class TeamControlPlane extends Context.Service<
   }
 >()("t3/team/TeamControlPlane") {}
 
-const clientLayer = (workspace: typeof Workspace.Type) =>
-  RpcClient.layerProtocolSocket({
-    retryTransientErrors: false,
-    retryPolicy: Schedule.recurs(0),
-  }).pipe(
-    Layer.provide(
-      NodeSocket.layerWebSocket(workspace.rpcUrl, {
-        headers: { authorization: `Bearer ${workspace.bearer}` },
-      }),
-    ),
-    Layer.provide(RpcSerialization.layerJson),
-  );
+const sandboxWorkspace = (workspace: typeof Workspace.Type): SandboxWorkspace => ({
+  id: workspace.id,
+  credentials: workspace.credentials ?? {},
+  networkMode: workspace.networkMode ?? "none",
+});
 
-const withClient = Effect.fn("TeamControlPlane.withClient")(
-  function* <A, E>(
-    workspace: typeof Workspace.Type,
-    use: (
-      client: RpcClient.RpcClient<RpcGroup.Rpcs<typeof WsRpcGroup>, RpcClientError>,
-    ) => Effect.Effect<A, E>,
-  ) {
-    return yield* Effect.scoped(
-      Effect.flatMap(RpcClient.make(WsRpcGroup), use).pipe(Effect.provide(clientLayer(workspace))),
-    );
-  },
-  Effect.tapError((cause) => Effect.logError("Team executor request failed", { cause })),
-  Effect.mapError(() => new TeamError({ rule: "executor_failure" })),
-);
+// Every sandbox failure fails closed on the Team surface: an unavailable or
+// revoked boundary never degrades into host execution.
+const sandboxErrors = {
+  SandboxRunNotFound: () => new TeamError({ rule: "run_not_found" as const }),
+  SandboxRunConflict: () => new TeamError({ rule: "command_conflict" as const }),
+  SandboxRevoked: () => new TeamError({ rule: "workspace_membership_required" as const }),
+  SandboxUnavailable: () => new TeamError({ rule: "executor_failure" as const }),
+};
 
 const storage = <A>(
   effect: Effect.Effect<
@@ -186,6 +178,7 @@ export const layer = (config: TeamConfig) =>
       const sessions = yield* SessionStore.SessionStore;
       const auth = yield* EnvironmentAuth.EnvironmentAuth;
       const sql = yield* SqlClient.SqlClient;
+      const boundary = yield* TeamExecutionBoundary;
       const verificationFailure = (cause: SessionStore.SessionCredentialError) =>
         SessionStore.isSessionCredentialInvalidError(cause)
           ? Effect.fail(new TeamError({ rule: "authentication_required" }))
@@ -250,36 +243,14 @@ export const layer = (config: TeamConfig) =>
         if (result.access.role !== "Owner") return yield* new TeamError({ rule: "owner_required" });
         return result;
       });
-      type NativeClient = RpcClient.RpcClient<RpcGroup.Rpcs<typeof WsRpcGroup>, RpcClientError>;
       const readRun = Effect.fn("TeamControlPlane.readRun")(function* (
         workspace: typeof Workspace.Type,
         id: string,
-        connectedClient?: NativeClient,
       ) {
-        if (
-          !new RegExp(`^team\\.${workspace.id}\\.[A-Za-z0-9_-]{1,64}\\.[A-Za-z0-9_-]{1,64}$`).test(
-            id,
-          )
-        )
-          return yield* new TeamError({ rule: "run_not_found" });
-        const query = (client: NativeClient) =>
-          client[ORCHESTRATION_V2_WS_METHODS.getThreadProjection]({ threadId: ThreadId.make(id) });
-        const projection = yield* connectedClient === undefined
-          ? withClient(workspace, query)
-          : query(connectedClient).pipe(
-              Effect.mapError(() => new TeamError({ rule: "executor_failure" })),
-            );
-        if (projection.thread.projectId !== workspace.projectId || projection.runs.length !== 1)
-          return yield* new TeamError({ rule: "run_not_found" });
-        const run = projection.runs[0]!;
-        return {
-          id,
-          nativeRunId: run.id,
-          status: run.status,
-          output: projection.messages
-            .filter((message) => message.runId === run.id && message.role === "assistant")
-            .map((message) => message.text),
-        };
+        if (!scopedRunId(workspace.id, id)) return yield* new TeamError({ rule: "run_not_found" });
+        return yield* boundary
+          .read(sandboxWorkspace(workspace), id)
+          .pipe(Effect.catchTags(sandboxErrors));
       });
       const read = Effect.fn("TeamControlPlane.read")(function* (
         authorization: string | undefined,
@@ -348,6 +319,10 @@ export const layer = (config: TeamConfig) =>
         deleteWorkspace: Effect.fn("TeamControlPlane.deleteWorkspace")(
           function* (authorization, workspaceId) {
             const { session } = yield* owner(authorization, workspaceId);
+            // Revoke at the boundary before membership rows settle: the durable
+            // marker blocks in-flight and later starts, and if membership
+            // deletion then fails the workspace stays denied rather than live.
+            yield* boundary.dropWorkspace(workspaceId).pipe(Effect.catchTags(sandboxErrors));
             yield* storage(members.deleteWorkspace(session.subject, workspaceId));
           },
         ),
@@ -403,24 +378,10 @@ export const layer = (config: TeamConfig) =>
         start: Effect.fn("TeamControlPlane.start")(function* (authorization, input) {
           const { access, workspace } = yield* authorize(authorization, input.workspaceId, true);
           const id = `team.${workspace.id}.${access.userId}.${input.commandId}`;
-          const result = yield* withClient(workspace, (client) =>
-            client[ORCHESTRATION_V2_WS_METHODS.launchThread]({
-              commandId: CommandId.make(id),
-              threadId: ThreadId.make(id),
-              projectId: workspace.projectId,
-              title: "Team execution",
-              generateTitle: false,
-              modelSelection: workspace.modelSelection,
-              runtimeMode: "approval-required",
-              interactionMode: "default",
-              workspaceStrategy: { type: "root" },
-              initialMessage: { messageId: MessageId.make(id), text: input.text, attachments: [] },
-            }),
-          );
-          const original = result.projection.messages.find((message) => message.id === id);
-          if (!original || original.text !== input.text)
-            return yield* new TeamError({ rule: "command_conflict" });
-          return yield* read(authorization, { workspaceId: input.workspaceId, runId: id });
+          yield* boundary
+            .start(sandboxWorkspace(workspace), id, input.text)
+            .pipe(Effect.catchTags(sandboxErrors));
+          return yield* readRun(workspace, id);
         }),
         read,
         stream: (authorization, input) =>
@@ -428,24 +389,12 @@ export const layer = (config: TeamConfig) =>
             Effect.gen(function* () {
               const { session, workspace } = yield* authorize(authorization, input.workspaceId);
               yield* readRun(workspace, input.runId);
-              return Stream.unwrap(
-                Effect.map(RpcClient.make(WsRpcGroup), (client) =>
-                  client[ORCHESTRATION_V2_WS_METHODS.subscribeThread]({
-                    threadId: ThreadId.make(input.runId),
-                  }).pipe(
-                    Stream.mapEffect(
-                      Effect.fn("TeamControlPlane.readStreamRun")(function* () {
-                        yield* authorize(authorization, input.workspaceId);
-                        return yield* readRun(workspace, input.runId, client);
-                      }),
-                    ),
-                  ),
-                ),
-              ).pipe(
+              return Stream.fromEffect(readRun(workspace, input.runId)).pipe(
+                Stream.repeat(Schedule.spaced("500 millis")),
+                Stream.takeUntil((run) => run.status !== "running" && run.status !== "waiting"),
                 Stream.mapError((cause) =>
                   isTeamError(cause) ? cause : new TeamError({ rule: "executor_failure" }),
                 ),
-                Stream.provide(clientLayer(workspace)),
                 Stream.interruptWhen(
                   Effect.raceFirst(
                     sessions.awaitInvalidation(session.sessionId).pipe(
