@@ -21,7 +21,9 @@ export const teamRuleStatus = (rule: string): number => RULE_STATUS[rule] ?? 400
 
 /** The session itself is gone (logout, expiry, revoked token): no workspace stays reachable. */
 export function isSessionLost(error: unknown): boolean {
-  return isTeamApiError(error) && error.rule === "authentication_required";
+  return (
+    isTeamApiError(error) && (error.rule === "authentication_required" || error.status === 401)
+  );
 }
 
 /**

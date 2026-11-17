@@ -31,10 +31,14 @@ export const teamArtifactsPath = (workspaceId: string): string =>
 export const teamArtifactUrl = (baseUrl: string, path: string): string =>
   `${baseUrl.replace(/\/+$/, "")}${path}`;
 
-const readErrorRule = (body: unknown, status: number): string =>
-  typeof body === "object" && body !== null && "error" in body
+const readErrorRule = (body: unknown, status: number): string => {
+  // The environment auth layer answers 401 without the team rule shape; one session serves both
+  // surfaces, so a rejected session means the same thing here.
+  if (status === 401) return "authentication_required";
+  return typeof body === "object" && body !== null && "error" in body
     ? String((body as { error: unknown }).error)
     : `http_${status}`;
+};
 
 export interface TeamArtifactRequest {
   /** Origin of the environment server that owns the artifact route. */
@@ -73,6 +77,35 @@ async function artifactRequest<A>(input: TeamArtifactRequest, path: string): Pro
     });
   }
   return (await response.json()) as A;
+}
+
+/**
+ * Content of one artifact, authenticated with the member's own session. A navigation cannot carry
+ * the bearer, so the caller renders the blob itself: a sandboxed frame for preview, a download for
+ * saving. The blob must never be navigated at top level, or the content would run on the app origin.
+ */
+export async function fetchArtifactContent(input: {
+  readonly baseUrl: string;
+  readonly path: string;
+  readonly authorization: string;
+  readonly fetchImpl?: typeof fetch;
+}): Promise<Blob> {
+  const fetchImpl = input.fetchImpl ?? fetch;
+  const response = await fetchImpl(teamArtifactUrl(input.baseUrl, input.path), {
+    method: "GET",
+    credentials: "omit",
+    headers: { authorization: `Bearer ${input.authorization}` },
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as unknown;
+    const rule = readErrorRule(body, response.status);
+    throw new TeamApiError({
+      message: `Team artifact request failed: ${rule} (${response.status})`,
+      rule,
+      status: response.status,
+    });
+  }
+  return await response.blob();
 }
 
 export async function listArtifacts(
