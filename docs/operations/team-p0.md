@@ -68,7 +68,7 @@ node apps/server/scripts/team-p0.ts CONFIG.json ISOLATED_GATEWAY_HOME serve
 
 - 会话：调用 `team.login({ credential })` 获取 `AuthAccessTokenResult` 中的 `access_token`，后续请求携带 `authorization: Bearer <access_token>`；`team.logout()` 吊销会话。
 - 成员：仅拥有者可调用 `team.invite({ workspaceId, userId, name, role })` 为新身份生成一次性邀请码；已有身份返回 `user_already_invited`，避免签发他人的登录凭据。通过 `team.setMember` 将已有用户加入工作区或调整角色，通过 `team.removeMember` 移除成员。
-- 工作区：通过 `team.workspaces`、`team.workspace`、`team.members` 查询；`team.createWorkspace` 需要拥有者权限且服务端已配置绑定，每个工作区对应独立项目；支持 `team.renameWorkspace` 与 `team.deleteWorkspace`。
+- 工作区：通过 `team.workspaces`、`team.workspace`、`team.members` 查询；`team.createWorkspace` 需要拥有者权限且服务端已配置绑定，每个工作区对应独立项目；支持 `team.renameWorkspace` 与 `team.deleteWorkspace`。删除后的工作区标识与项目绑定都保持预留：再次使用同一标识，或让新工作区复用该绑定，都会以 `workspace_identifier_reserved` 拒绝；契约里的错误文案说明该标识由已删除的工作区保留、需要改用服务端配置的新标识，客户端按它显示即可，不得把这条错误当作可重试的存储故障。
 - 执行：调用 `team.start`、`team.read` 与 `team.stream`。只读成员禁止执行；网络重连或网关重启后保留已完成任务的稳定运行标识与输出引用；权限撤销或登出时，挂起的流会以 `authentication_required` 或 `workspace_membership_required` 异常立即终止。
 
 ## 6. 本地验证

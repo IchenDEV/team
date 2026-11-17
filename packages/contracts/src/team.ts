@@ -15,25 +15,39 @@ export const TeamWorkspaceAccess = Schema.Struct({
 });
 export const TeamMember = Schema.Struct({ userId: TeamId, name: TeamName, role: TeamRole });
 
+export const TeamErrorRule = Schema.Literals([
+  "authentication_required",
+  "workspace_membership_required",
+  "viewer_execution_forbidden",
+  "run_not_found",
+  "command_conflict",
+  "executor_failure",
+  "storage_failure",
+  "invited_user_required",
+  "user_already_invited",
+  "owner_required",
+  "last_owner_required",
+  "member_not_found",
+  "workspace_not_configured",
+  "workspace_identifier_reserved",
+]);
+export type TeamErrorRule = typeof TeamErrorRule.Type;
+
+// Client-side copy for codes whose remedy the bare code cannot carry. Every other
+// code is already a descriptive identifier, so it stays as it is.
+const teamErrorGuidance: Readonly<Partial<Record<TeamErrorRule, string>>> = {
+  workspace_identifier_reserved:
+    "This workspace identifier or project binding is reserved: it belongs to a deleted workspace, or to one that already exists, and cannot be reused. Create the workspace under a new identifier and project binding from the server configuration.",
+};
+
+export const teamErrorMessage = (rule: TeamErrorRule): string => teamErrorGuidance[rule] ?? rule;
+
 export class TeamError extends Schema.TaggedError<TeamError>()("TeamError", {
-  rule: Schema.Literals([
-    "authentication_required",
-    "workspace_membership_required",
-    "viewer_execution_forbidden",
-    "run_not_found",
-    "command_conflict",
-    "executor_failure",
-    "storage_failure",
-    "invited_user_required",
-    "user_already_invited",
-    "owner_required",
-    "last_owner_required",
-    "member_not_found",
-    "workspace_not_configured",
-  ]),
+  rule: TeamErrorRule,
 }) {
+  // Clients render the message; `rule` stays the machine-readable code they branch on.
   override get message(): string {
-    return this.rule;
+    return teamErrorMessage(this.rule);
   }
 }
 

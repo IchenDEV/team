@@ -158,12 +158,41 @@ it.effect("keeps an owner through role changes and rolls back invalid updates", 
         projectId: ProjectId.make("project-a"),
         name: "New owner, old runs",
       })
-      .pipe(Effect.result);
+      .pipe(Effect.flip);
     assert.equal(
-      reused._tag,
-      "Failure",
+      membershipRule(reused),
+      "workspace_identifier_reserved",
       "Deleted workspace ids must not expose former runs to new owners",
     );
+    assert.equal(
+      membershipRule(yield* members.resolve("invited:bob", "a").pipe(Effect.flip)),
+      "workspace_membership_required",
+    );
+  }).pipe(Effect.provide(membersLayer)),
+);
+
+it.effect("keeps a deleted workspace's project binding reserved", () =>
+  Effect.gen(function* () {
+    const members = yield* seed;
+    yield* members.deleteWorkspace("invited:alice", "a");
+    assert.equal(
+      membershipRule(
+        yield* members
+          .createWorkspace("invited:bob", {
+            id: "c",
+            projectId: ProjectId.make("project-a"),
+            name: "New id, deleted project binding",
+          })
+          .pipe(Effect.flip),
+      ),
+      "workspace_identifier_reserved",
+    );
+    yield* members.createWorkspace("invited:bob", {
+      id: "c",
+      projectId: ProjectId.make("project-c"),
+      name: "Fresh binding",
+    });
+    assert.equal((yield* members.resolve("invited:bob", "c")).projectId, "project-c");
   }).pipe(Effect.provide(membersLayer)),
 );
 
