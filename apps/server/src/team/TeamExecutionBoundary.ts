@@ -3,7 +3,6 @@ import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
-import * as Schedule from "effect/Schedule";
 import * as Schema from "effect/Schema";
 
 import {
@@ -156,19 +155,24 @@ const make = Effect.fn("TeamExecutionBoundary.make")(function* (options: {
         yield* requireLive(workspace);
         if (!scopedRunId(workspace.id, runId) || !ARTIFACT_NAME_PATTERN.test(name))
           return yield* new SandboxRunNotFound({ runName: runId });
-        // Inspect can briefly lag a just-finished container; poll until a
-        // terminal status before judging publication eligibility.
-        const info = yield* sandbox.readRun(dockerName(runId)).pipe(
-          Effect.repeat({
-            until: (read) => read.status !== "running",
-            schedule: Schedule.spaced("100 millis"),
-            times: 30,
-          }),
+        // Eligibility rests on `docker wait`, which cannot return while the
+        // container runs — inspect is only consulted for detail when a
+        // genuinely running run hits the bound.
+        const info = yield* sandbox.waitRun(dockerName(runId)).pipe(
+          Effect.timeoutOption("5 seconds"),
+          Effect.flatMap((outcome) =>
+            outcome._tag === "Some"
+              ? Effect.succeed(outcome.value)
+              : sandbox.readRun(dockerName(runId)),
+          ),
         );
         if (info.status !== "completed")
           return yield* new SandboxUnavailable({
             operation: "artifact.publish",
-            detail: `run ${runId} did not complete`,
+            detail:
+              `run ${runId} did not complete (status: ${info.status}` +
+              (info.output.length > 0 ? `, output: ${info.output.slice(-3).join(" | ")}` : "") +
+              ")",
           });
         const spec = yield* requireSpec(workspace);
         const targetDir = `${options.stateDir}/published/${workspace.id}`;
