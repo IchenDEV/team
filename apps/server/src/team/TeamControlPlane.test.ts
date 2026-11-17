@@ -243,5 +243,18 @@ it.effect(
         (yield* client["team.workspaces"](undefined, owner)).map((entry) => entry.id),
         ["alpha", "beta"],
       );
+      assert.equal(
+        rule(
+          yield* client["team.createWorkspace"](
+            { workspaceId: "gamma", name: "Gamma" },
+            owner,
+          ).pipe(Effect.flip),
+        ),
+        "workspace_identifier_reserved",
+      );
+      assert.equal(
+        rule(yield* client["team.workspace"]({ workspaceId: "gamma" }, owner).pipe(Effect.flip)),
+        "workspace_membership_required",
+      );
     }).pipe(Effect.provide(layer)),
 );

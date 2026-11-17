@@ -24,6 +24,7 @@ export class TeamMembershipError extends Schema.TaggedError<TeamMembershipError>
       "owner_required",
       "last_owner_required",
       "member_not_found",
+      "workspace_identifier_reserved",
     ]),
   },
 ) {}
@@ -189,6 +190,14 @@ const make = Effect.gen(function* () {
           "TeamMembershipRepository.createWorkspace",
           Effect.gen(function* () {
             const user = yield* requireUser(subject);
+            const bound = yield* sql`SELECT 1 FROM team_workspaces WHERE id = ${input.id}`.pipe(
+              Effect.mapError(
+                toPersistenceSqlError("TeamMembershipRepository.createWorkspaceBinding"),
+              ),
+            );
+            // Deleting a workspace keeps its id and project binding, so the row outlives it.
+            if (bound.length > 0)
+              return yield* new TeamMembershipError({ rule: "workspace_identifier_reserved" });
             yield* sql`INSERT INTO team_workspaces (id, project_id, name) VALUES (${input.id}, ${input.projectId}, ${input.name})`.pipe(
               Effect.mapError(toPersistenceSqlError("TeamMembershipRepository.createWorkspace")),
             );

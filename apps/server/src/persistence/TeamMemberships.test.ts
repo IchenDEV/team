@@ -158,11 +158,15 @@ it.effect("keeps an owner through role changes and rolls back invalid updates", 
         projectId: ProjectId.make("project-a"),
         name: "New owner, old runs",
       })
-      .pipe(Effect.result);
+      .pipe(Effect.flip);
     assert.equal(
-      reused._tag,
-      "Failure",
+      membershipRule(reused),
+      "workspace_identifier_reserved",
       "Deleted workspace ids must not expose former runs to new owners",
+    );
+    assert.equal(
+      membershipRule(yield* members.resolve("invited:bob", "a").pipe(Effect.flip)),
+      "workspace_membership_required",
     );
   }).pipe(Effect.provide(membersLayer)),
 );
