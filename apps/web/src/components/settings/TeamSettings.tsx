@@ -319,106 +319,6 @@ function MembersSection({ role }: { role: TeamRole }) {
   );
 }
 
-function InboxSection() {
-  const humanCalls = useTeamStore((state) => state.humanCalls);
-  const humanCallsError = useTeamStore((state) => state.humanCallsError);
-  const loadHumanCalls = useTeamStore((state) => state.loadHumanCalls);
-  const answerHumanCall = useTeamStore((state) => state.answerHumanCall);
-  const [draft, setDraft] = useState<Record<string, string>>({});
-  const [sending, setSending] = useState<string | null>(null);
-
-  const submit = (callId: string) => {
-    const answer = (draft[callId] ?? "").trim();
-    if (answer.length === 0) return;
-    setSending(callId);
-    void answerHumanCall(callId, answer).then(() => {
-      setSending(null);
-      setDraft((current) => ({ ...current, [callId]: "" }));
-    });
-  };
-
-  const content = (() => {
-    if (humanCalls === null && humanCallsError === null) return null;
-    if (humanCalls === null) return null;
-    if (humanCalls.length === 0) {
-      return (
-        <p className="px-3 py-2 text-sm text-muted-foreground sm:px-4">Nobody is waiting on you.</p>
-      );
-    }
-    return (
-      <ul className="divide-y divide-border/50">
-        {humanCalls.map((call) => (
-          <li key={call.id} className="flex flex-col gap-2 px-3 py-3 sm:px-4">
-            <span className="flex items-baseline gap-2">
-              <span className="text-sm">{call.question}</span>
-              <span className="text-xs text-muted-foreground">{call.caller.name}</span>
-            </span>
-            {call.contextLink ? (
-              <a
-                href={call.contextLink}
-                target="_blank"
-                rel="noreferrer"
-                className="truncate text-xs text-icon-muted hover:text-foreground"
-              >
-                {call.contextLink}
-              </a>
-            ) : null}
-            {call.options.length > 0 ? (
-              <span className="flex flex-wrap gap-2">
-                {call.options.map((option) => (
-                  <Button
-                    key={option}
-                    size="sm"
-                    variant="secondary"
-                    disabled={sending === call.id}
-                    onClick={() => {
-                      setSending(call.id);
-                      void answerHumanCall(call.id, option).then(() => setSending(null));
-                    }}
-                  >
-                    {option}
-                  </Button>
-                ))}
-              </span>
-            ) : null}
-            <span className="flex items-center gap-2">
-              <Input
-                value={draft[call.id] ?? ""}
-                placeholder="Answer in one sentence"
-                onChange={(event) =>
-                  setDraft((current) => ({ ...current, [call.id]: event.target.value }))
-                }
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") submit(call.id);
-                }}
-              />
-              <Button
-                size="sm"
-                disabled={sending === call.id || (draft[call.id] ?? "").trim().length === 0}
-                onClick={() => submit(call.id)}
-              >
-                Answer
-              </Button>
-            </span>
-          </li>
-        ))}
-      </ul>
-    );
-  })();
-
-  return (
-    <SettingsSection title="Calls waiting on you">
-      <span className="flex justify-end px-3 sm:px-4">
-        <Button size="sm" variant="ghost" onClick={() => void loadHumanCalls()}>
-          Refresh
-        </Button>
-      </span>
-      {content}
-      <TeamErrorNote message={humanCallsError} />
-    </SettingsSection>
-  );
-}
-
 function ArtifactsSection() {
   const artifacts = useTeamStore((state) => state.artifacts);
   const artifactsError = useTeamStore((state) => state.artifactsError);
@@ -504,7 +404,6 @@ export function TeamSettings() {
       if (state.currentWorkspaceId !== null) {
         void state.loadMembers();
         void state.loadArtifacts();
-        void state.loadHumanCalls();
       }
     });
   }, [token, loadWorkspaces]);
@@ -520,7 +419,6 @@ export function TeamSettings() {
           {currentWorkspace !== null ? (
             <>
               <MembersSection role={currentWorkspace.role} />
-              <InboxSection />
               <ArtifactsSection />
             </>
           ) : null}
