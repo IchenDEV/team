@@ -167,6 +167,7 @@ export const useTeamStore = create<TeamState>()(
       selectWorkspace: (workspaceId) => {
         set(() => ({
           currentWorkspaceId: workspaceId,
+          workspacesError: null,
           // Switching drops the old tenant's rows before the new ones arrive.
           ...clearWorkspaceScoped(),
         }));
@@ -231,7 +232,8 @@ export const useTeamStore = create<TeamState>()(
           await get().loadMembers();
           return result;
         } catch (error) {
-          if (get().currentWorkspaceId === workspaceId) {
+          // Only a lost session or membership changes stored state; a plain rule stays with the form.
+          if (get().currentWorkspaceId === workspaceId && isMembershipRevocation(error)) {
             get().handleWorkspaceAccessLost(error, "members", errorMessage(error));
           }
           throw error;

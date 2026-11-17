@@ -18,6 +18,7 @@ vi.mock("@t3tools/client-runtime/team", async (importOriginal) => {
     listWorkspaces: vi.fn(),
     listMembers: vi.fn(),
     listArtifacts: vi.fn(),
+    inviteMember: vi.fn(),
     logout: vi.fn(),
   };
 });
@@ -188,6 +189,46 @@ describe("teamStore", () => {
       workspaceId: "ws_a",
     });
     expect(useTeamStore.getState().artifactBaseUrl).toBe("http://environment.test");
+  });
+
+  it("treats a non-JSON answer as a missing artifact route", async () => {
+    const actual = await vi.importActual<typeof import("@t3tools/client-runtime/team")>(
+      "@t3tools/client-runtime/team",
+    );
+    const response = new Response("<!doctype html><title>app</title>", {
+      status: 200,
+      headers: { "content-type": "text/html" },
+    });
+    const rejection = await actual
+      .listArtifacts({
+        baseUrl: "http://environment.test",
+        workspaceId: "ws_a",
+        authorization: "token",
+        fetchImpl: (async () => response) as unknown as typeof fetch,
+      })
+      .catch((error: unknown) => error);
+    expect(rejection).toBeInstanceOf(TeamApiError);
+    expect((rejection as TeamApiError).status).toBe(404);
+    expect((rejection as TeamApiError).rule).toBe("artifact_route_unavailable");
+  });
+
+  it("keeps a plain rule with the form instead of touching stored state", async () => {
+    const { inviteMember } = await team();
+    vi.mocked(inviteMember).mockRejectedValue(
+      new TeamApiError({ message: "already invited", status: 400, rule: "user_already_invited" }),
+    );
+    useTeamStore.setState({
+      token: "token",
+      currentWorkspaceId: "ws_a",
+      workspaces: [WORKSPACE_A],
+    });
+
+    await expect(useTeamStore.getState().invite({ name: "Bob", role: "Viewer" })).rejects.toThrow();
+
+    const state = useTeamStore.getState();
+    expect(state.currentWorkspaceId).toBe("ws_a");
+    expect(state.membersError).toBeNull();
+    expect(state.workspacesError).toBeNull();
   });
 
   it("disconnect clears the token and every workspace-scoped row", async () => {

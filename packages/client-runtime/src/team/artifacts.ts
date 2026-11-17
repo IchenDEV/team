@@ -54,16 +54,22 @@ async function artifactRequest<A>(input: TeamArtifactRequest, path: string): Pro
     headers: authorization === null ? {} : { authorization: `Bearer ${authorization}` },
   });
   if (!response.ok) {
-    // A packaged server answers unknown paths with the app shell, so only JSON carries a rule.
-    const contentType = response.headers.get("content-type") ?? "";
-    const body = contentType.includes("application/json")
-      ? ((await response.json().catch(() => null)) as unknown)
-      : null;
+    const body = (await response.json().catch(() => null)) as unknown;
     const rule = readErrorRule(body, response.status);
     throw new TeamApiError({
       message: `Team artifact request failed: ${rule} (${response.status})`,
       rule,
       status: response.status,
+    });
+  }
+  // A server without the artifact route answers with the app shell and a 200, so the content
+  // type is what tells a missing route from a real answer.
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    throw new TeamApiError({
+      message: "Shared artifacts are not available on this environment.",
+      rule: "artifact_route_unavailable",
+      status: 404,
     });
   }
   return (await response.json()) as A;
