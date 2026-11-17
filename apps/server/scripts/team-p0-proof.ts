@@ -197,6 +197,25 @@ const program = Effect.gen(function* () {
             ).pipe(Effect.flip),
             "owner_required",
           );
+          yield* client["team.setMember"](
+            { workspaceId: "beta", userId: "bob", role: "Owner" },
+            owner,
+          );
+          denied(
+            yield* client["team.invite"](
+              { workspaceId: "beta", userId: "owner", name: "Impersonated", role: "Editor" },
+              bob,
+            ).pipe(Effect.flip),
+            "user_already_invited",
+          );
+          check(
+            (yield* client["team.workspace"]({ workspaceId: "beta" }, owner)).role === "Owner",
+            "Rejected invitation changed an existing identity's membership",
+          );
+          yield* client["team.setMember"](
+            { workspaceId: "beta", userId: "bob", role: "Viewer" },
+            owner,
+          );
           const startInput = {
             workspaceId: "alpha",
             commandId: commandId!,
@@ -276,6 +295,7 @@ const program = Effect.gen(function* () {
             workspaceCrud: "PASS",
             twoIdentities: "PASS",
             crossWorkspace: "PASS",
+            invitationIdentityBoundary: "PASS",
             viewerAndOwnerGuards: "PASS",
             editorExecution: "PASS",
             membershipRevocationAndLogoutStreams: "PASS",

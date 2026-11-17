@@ -19,6 +19,7 @@ export class TeamMembershipError extends Schema.TaggedError<TeamMembershipError>
   {
     rule: Schema.Literals([
       "invited_user_required",
+      "user_already_invited",
       "workspace_membership_required",
       "owner_required",
       "last_owner_required",
@@ -173,12 +174,12 @@ const make = Effect.gen(function* () {
     }, Effect.scoped),
     inviteUser: Effect.fn("TeamMembershipRepository.inviteUser")(function (input) {
       return sql`INSERT INTO team_users (id, subject, name) VALUES (${input.id}, ${input.subject}, ${input.name})
-        ON CONFLICT(id) DO UPDATE SET id = excluded.id WHERE team_users.subject = excluded.subject RETURNING id`.pipe(
+        ON CONFLICT DO NOTHING RETURNING id`.pipe(
         Effect.mapError(toPersistenceSqlError("TeamMembershipRepository.inviteUser")),
         Effect.flatMap((rows) =>
           rows.length === 1
             ? Effect.void
-            : Effect.fail(new TeamMembershipError({ rule: "invited_user_required" })),
+            : Effect.fail(new TeamMembershipError({ rule: "user_already_invited" })),
         ),
       );
     }),

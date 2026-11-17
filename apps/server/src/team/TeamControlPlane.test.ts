@@ -53,6 +53,33 @@ const rule = (error: unknown) => {
   return error.rule;
 };
 
+it.effect("cannot mint another workspace's existing identity through invitations", () =>
+  Effect.gen(function* () {
+    const { repository, client, login, owner } = yield* setup;
+    yield* repository.setMember(TeamControlPlane.userSubject("owner"), "beta", "alice", "Owner");
+    yield* repository.removeMember(TeamControlPlane.userSubject("alice"), "beta", "owner");
+    const alice = yield* login("alice");
+    for (const userId of ["owner", "alice"]) {
+      const invitation = yield* client["team.invite"](
+        { workspaceId: "beta", userId, name: "Impersonated", role: "Owner" },
+        alice,
+      ).pipe(Effect.result);
+      assert.equal(invitation._tag, "Failure", "Invitations must not mint an existing identity");
+      if (invitation._tag === "Failure")
+        assert.equal(rule(invitation.failure), "user_already_invited");
+    }
+    assert.deepEqual(
+      (yield* client["team.workspaces"](undefined, owner)).map((workspace) => workspace.id),
+      ["alpha"],
+    );
+    yield* client["team.setMember"](
+      { workspaceId: "beta", userId: "owner", role: "Viewer" },
+      alice,
+    );
+    assert.equal((yield* client["team.workspace"]({ workspaceId: "beta" }, owner)).role, "Viewer");
+  }).pipe(Effect.provide(layer)),
+);
+
 it.effect("checks current identity and every workspace entry point across all roles", () =>
   Effect.gen(function* () {
     const { repository, client, login, owner } = yield* setup;

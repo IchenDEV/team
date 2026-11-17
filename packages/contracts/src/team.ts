@@ -25,6 +25,7 @@ export class TeamError extends Schema.TaggedError<TeamError>()("TeamError", {
     "executor_failure",
     "storage_failure",
     "invited_user_required",
+    "user_already_invited",
     "owner_required",
     "last_owner_required",
     "member_not_found",

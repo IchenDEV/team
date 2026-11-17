@@ -170,12 +170,15 @@ it.effect("keeps an owner through role changes and rolls back invalid updates", 
 it.effect("enforces unique identities, valid roles and membership foreign keys", () =>
   Effect.gen(function* () {
     const members = yield* seed;
-    assert.equal(
-      (yield* members
-        .inviteUser({ id: "eve", subject: "invited:alice", name: "Eve" })
-        .pipe(Effect.flip))._tag,
-      "PersistenceSqlError",
-    );
+    for (const input of [
+      { id: "alice", subject: "invited:alice", name: "Changed" },
+      { id: "alice", subject: "invited:eve", name: "Eve" },
+      { id: "eve", subject: "invited:alice", name: "Eve" },
+    ])
+      assert.equal(
+        membershipRule(yield* members.inviteUser(input).pipe(Effect.flip)),
+        "user_already_invited",
+      );
     const sql = yield* SqlClient.SqlClient;
     for (const invalid of [
       sql`INSERT INTO team_memberships VALUES ('a', 'bob', 'Admin')`,
