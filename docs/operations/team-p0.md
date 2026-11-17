@@ -73,7 +73,7 @@ node apps/server/scripts/team-p0.ts CONFIG.json ISOLATED_GATEWAY_HOME serve
 
 ## 6. 本地验证
 
-运行控制面与持久化相关的单元测试（共 20 项测试）：
+运行控制面与持久化相关的单元测试（共 21 项测试）：
 
 ```bash
 vp test run apps/server/src/team/TeamControlPlane.test.ts apps/server/src/team/TeamRuntime.test.ts apps/server/src/persistence/TeamMemberships.test.ts apps/server/src/persistence/Migrations.test.ts
@@ -96,3 +96,15 @@ node apps/server/scripts/team-p0-proof.ts SYNTHETIC_CONFIG.json NEW_GATEWAY_HOME
 ## 7. 边界与限制
 
 操作系统级沙箱未经验证。测试仅使用受信任内部合成数据，重放执行器仅模拟模型响应，HTTP、RPC、SQLite 与鉴权均为真实运行。已删除的工作区与项目标识仍保持预留；新建工作区请使用服务端配置的新绑定。未经验收前请勿用于浏览器端、移动端或生产环境。
+
+## 8. 邀请过期与身份恢复边界
+
+新身份的一次性邀请码可能在首次兑换前过期。过期后控制面不会为它重新签发凭据：
+
+- `team.invite` 对任何已存在的全局身份返回 `user_already_invited`，包括只存在于其它工作区的身份；它不创建用户、不写入成员关系，也不返回新凭据。
+- 同一工作区的拥有者也不能对过期邀请重新签发凭据。工作区拥有者只能通过 `team.setMember` 为已有身份授予或调整成员关系，该操作不签发登录凭据。
+- 任何面向工作区拥有者的重签入口都不得新增。
+
+恢复由可信服务运营者在环境侧处理：复用该环境已有的认证方式，在签发任何凭据前线下核验用户身份，再由环境侧为该主体重新签发配对链接，或由用户按既有登录方式重新认证。恢复不从工作区侧发起，也绝不从工作区侧签发全局身份，否则会造成跨工作区身份冒用。
+
+该边界由 `apps/server/src/team/TeamControlPlane.test.ts` 中的 “cannot mint or re-mint an identity that exists in another workspace” 用例守护。

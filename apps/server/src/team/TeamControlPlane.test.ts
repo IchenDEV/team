@@ -53,7 +53,7 @@ const rule = (error: unknown) => {
   return error.rule;
 };
 
-it.effect("cannot mint another workspace's existing identity through invitations", () =>
+it.effect("cannot mint or re-mint an identity that exists in another workspace", () =>
   Effect.gen(function* () {
     const { repository, client, login, owner } = yield* setup;
     yield* repository.setMember(TeamControlPlane.userSubject("owner"), "beta", "alice", "Owner");
@@ -68,6 +68,41 @@ it.effect("cannot mint another workspace's existing identity through invitations
       if (invitation._tag === "Failure")
         assert.equal(rule(invitation.failure), "user_already_invited");
     }
+    assert.deepEqual(
+      (yield* client["team.members"]({ workspaceId: "beta" }, alice)).map((entry) => entry.userId),
+      ["alice"],
+    );
+    // A first invitation that expires unredeemed leaves a global identity an Owner cannot re-mint,
+    // in its own workspace or in another one. Membership grants are the only Owner-side remedy.
+    yield* client["team.invite"](
+      { workspaceId: "beta", userId: "pending", name: "Pending", role: "Editor" },
+      alice,
+    );
+    for (const [workspaceId, options] of [
+      ["beta", alice],
+      ["alpha", owner],
+    ] as const) {
+      const reminted = yield* client["team.invite"](
+        { workspaceId, userId: "pending", name: "Pending", role: "Owner" },
+        options,
+      ).pipe(Effect.result);
+      assert.equal(reminted._tag, "Failure", "An expired invitation must not be re-minted");
+      if (reminted._tag === "Failure") assert.equal(rule(reminted.failure), "user_already_invited");
+    }
+    assert.deepEqual(
+      (yield* client["team.members"]({ workspaceId: "beta" }, alice)).map((entry) => [
+        entry.userId,
+        entry.role,
+      ]),
+      [
+        ["alice", "Owner"],
+        ["pending", "Editor"],
+      ],
+    );
+    assert.deepEqual(
+      (yield* client["team.members"]({ workspaceId: "alpha" }, owner)).map((entry) => entry.userId),
+      ["owner"],
+    );
     assert.deepEqual(
       (yield* client["team.workspaces"](undefined, owner)).map((workspace) => workspace.id),
       ["alpha"],
