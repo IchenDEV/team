@@ -192,11 +192,13 @@ export const useTeamStore = create<TeamState>()(
       },
 
       loadArtifacts: async () => {
-        const workspaceId = get().currentWorkspaceId;
-        if (workspaceId === null) return;
+        const state = get();
+        const workspaceId = state.currentWorkspaceId;
+        const connection = connectionOf(state);
+        if (workspaceId === null || connection === null) return;
         set({ artifactsError: null, artifactsUnavailable: false });
         try {
-          const request = await teamArtifactRequest();
+          const request = await teamArtifactRequest(connection.token);
           const artifacts = await listArtifacts({ ...request, workspaceId });
           if (get().currentWorkspaceId === workspaceId) {
             set({ artifacts, artifactBaseUrl: request.baseUrl });

@@ -5,10 +5,10 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { useTeamStore } from "./teamStore";
 
 vi.mock("./teamClient", () => ({
-  teamArtifactRequest: vi.fn().mockResolvedValue({
+  teamArtifactRequest: vi.fn().mockImplementation(async (token: string) => ({
     baseUrl: "http://environment.test",
-    authorization: null,
-  }),
+    authorization: token,
+  })),
 }));
 
 vi.mock("@t3tools/client-runtime/team", async (importOriginal) => {
@@ -173,13 +173,18 @@ describe("teamStore", () => {
     expect(state.artifactsError).toContain("no team user here");
   });
 
-  it("records the environment origin the artifact links must use", async () => {
+  it("reads artifacts with the team bearer on the environment origin", async () => {
     const { listArtifacts } = await team();
     vi.mocked(listArtifacts).mockResolvedValue([]);
-    useTeamStore.setState({ token: "token", currentWorkspaceId: "ws_a" });
+    useTeamStore.setState({ token: "team-token", currentWorkspaceId: "ws_a" });
 
     await useTeamStore.getState().loadArtifacts();
 
+    expect(vi.mocked(listArtifacts).mock.calls[0]?.[0]).toMatchObject({
+      baseUrl: "http://environment.test",
+      authorization: "team-token",
+      workspaceId: "ws_a",
+    });
     expect(useTeamStore.getState().artifactBaseUrl).toBe("http://environment.test");
   });
 
