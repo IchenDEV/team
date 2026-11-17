@@ -319,10 +319,11 @@ export const layer = (config: TeamConfig) =>
         deleteWorkspace: Effect.fn("TeamControlPlane.deleteWorkspace")(
           function* (authorization, workspaceId) {
             const { session } = yield* owner(authorization, workspaceId);
+            // Revoke at the boundary before membership rows settle: the durable
+            // marker blocks in-flight and later starts, and if membership
+            // deletion then fails the workspace stays denied rather than live.
+            yield* boundary.dropWorkspace(workspaceId).pipe(Effect.catchTags(sandboxErrors));
             yield* storage(members.deleteWorkspace(session.subject, workspaceId));
-            // Deleting a workspace revokes it: the boundary kills every workspace
-            // run and denies further work and artifact publication.
-            yield* boundary.dropWorkspace(workspaceId);
           },
         ),
         members: Effect.fn("TeamControlPlane.members")(function* (authorization, workspaceId) {

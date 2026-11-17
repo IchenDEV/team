@@ -27,9 +27,12 @@ import { layer as processRunnerLayer } from "../processRunner.ts";
 
 const suffix = Buffer.from(SecureRandom.randomBytesUnsafe(3)).toString("hex");
 const WS_A = `alpha${suffix}`;
-const WS_B = `beta${suffix}`;
+// Suffixing tenant B's id exercises the run-id → container-name collision a
+// flattened mapping allowed: team.<A>.twin-bob.x and team.<A>-twin.bob.x must
+// resolve different containers.
+const WS_B = `${WS_A}-twin`;
 const stateDir = `${NodeOS.homedir()}/.t3-team-isolation-${suffix}`;
-const dockerName = (runId: string) => `t3ex-${runId.replaceAll(".", "-")}`;
+const dockerName = (runId: string) => `t3ex-${runId}`;
 
 const workspace = (id: string) => ({
   id,
@@ -207,6 +210,21 @@ it.live(
           assert.isTrue(psOut.includes("ps"));
           assert.isFalse(psOut.includes("sleep 300"));
           assert.isFalse(psOut.includes(dockerName(bRun.id)));
+
+          // A run id that would alias tenant B's container under a flattened
+          // name mapping stays run_not_found for tenant A.
+          assert.equal(
+            rule(
+              yield* client["team.read"](
+                {
+                  workspaceId: WS_A,
+                  runId: `team.${WS_A}.twin-bob.stayalive`,
+                },
+                alice,
+              ).pipe(Effect.flip),
+            ),
+            "run_not_found",
+          );
 
           // Malicious tenant-A run cannot obtain tenant-B credential canaries.
           const envAttack = yield* client["team.start"](

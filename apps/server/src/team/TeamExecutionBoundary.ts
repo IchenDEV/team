@@ -30,7 +30,10 @@ export interface SandboxWorkspace {
 const RUN_ID_PATTERN = /^team\.[A-Za-z0-9_-]{1,64}\.[A-Za-z0-9_-]{1,64}\.[A-Za-z0-9_-]{1,64}$/;
 const ARTIFACT_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 
-const dockerName = (runId: string) => `t3ex-${runId.replaceAll(".", "-")}`;
+// The run id is used verbatim as the container name so the mapping stays
+// injective: dots and hyphens are both legal id characters, and flattening
+// dots to hyphens let distinct ids alias one container across workspaces.
+const dockerName = (runId: string) => `t3ex-${runId}`;
 
 export const scopedRunId = (workspaceId: string, runId: string) =>
   RUN_ID_PATTERN.test(runId) && runId.startsWith(`team.${workspaceId}.`);
@@ -52,7 +55,7 @@ export class TeamExecutionBoundary extends Context.Service<
       workspace: SandboxWorkspace,
       runId: string,
     ) => Effect.Effect<TeamRun, BoundaryError>;
-    readonly dropWorkspace: (workspaceId: string) => Effect.Effect<void, never>;
+    readonly dropWorkspace: (workspaceId: string) => Effect.Effect<void, BoundaryError>;
     readonly publishArtifact: (
       workspace: SandboxWorkspace,
       runId: string,
@@ -144,10 +147,22 @@ const make = Effect.fn("TeamExecutionBoundary.make")(function* (options: {
     // container runtime leaves nothing to clean, so the marker is still written.
     dropWorkspace: Effect.fn("TeamExecutionBoundary.dropWorkspace")(function* (workspaceId) {
       if (!options.stateDir) return;
-      yield* sandbox.removeWorkspaceRuns(workspaceId).pipe(Effect.ignore);
+      // The durable revocation marker is written before containers are killed
+      // so in-flight and later starts are denied first; a marker-write failure
+      // is never swallowed — it leaves the workspace visibly un-revoked.
       yield* fs
         .makeDirectory(`${options.stateDir}/workspaces/${workspaceId}`, { recursive: true })
-        .pipe(Effect.andThen(fs.writeFileString(revokedMarker(workspaceId), "")), Effect.ignore);
+        .pipe(
+          Effect.andThen(fs.writeFileString(revokedMarker(workspaceId), "")),
+          Effect.mapError(
+            (cause) =>
+              new SandboxUnavailable({
+                operation: "workspace.revoke",
+                detail: `cannot persist revocation for ${workspaceId}: ${String(cause)}`,
+              }),
+          ),
+        );
+      yield* sandbox.removeWorkspaceRuns(workspaceId).pipe(Effect.ignore);
     }),
 
     publishArtifact: Effect.fn("TeamExecutionBoundary.publishArtifact")(

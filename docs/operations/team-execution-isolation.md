@@ -2,7 +2,7 @@
 
 `team.start`/`team.read`/`team.stream` 的执行后端是 `TeamExecutionBoundary`：控制平面先做 Bearer 会话 + 成员/角色鉴权（复用现有 `authorize`，无第二认证系统），再把命令交给该工作区专属的容器沙箱执行。三项绑定：
 
-- **运行**：`team.<workspace>.<user>.<commandId>` → 同一工作区的专属容器（`--name t3ex-...`，标签 `t3.team.workspace`/`t3.team.run`/命令文本摘要）。相同命令重放返回同一运行；命令体不同的同 ID 提交返回 `command_conflict`。
+- **运行**：`team.<workspace>.<user>.<commandId>` → 同一工作区的专属容器（`--name t3ex-<runId>` 原样使用、映射单射，标签 `t3.team.workspace`/`t3.team.run`/命令文本摘要）。相同命令重放返回同一运行；命令体不同的同 ID 提交返回 `command_conflict`。
 - **文件系统根**：`<sandboxStateDir>/workspaces/<id>/root`，以读写方式挂载为容器内唯一的 `/workspace`。**项目目录绝不作为沙箱**——根目录由边界独占管理，凭据文件位于挂载树之外。
 - **受限环境凭据域**：`<sandboxStateDir>/workspaces/<id>/credentials.env`（0600，来自配置的 `workspaces[].credentials`），仅经 `--env-file` 注入该工作区的运行；宿主环境不会泄漏进沙箱。
 
@@ -10,7 +10,7 @@
 
 ## 失败关闭
 
-`TeamConfig.sandboxStateDir` 未配置或 `docker` 守护进程不可用时，执行路径返回 `executor_failure`——拒绝执行，不回落到宿主执行。`team.deleteWorkspace` 在删除成员面之外调用 `boundary.dropWorkspace`：杀光该工作区运行并留下 `REVOKED` 标记，其后的 `start`/`read`/`publishArtifact` 一律拒绝（成员面 `resolve` 先行拒绝，标记兜底竞态）。取消的运行不能发布产物；产物名限 `[A-Za-z0-9._-]` 且禁止前导点，杜绝目录穿越。
+`TeamConfig.sandboxStateDir` 未配置或 `docker` 守护进程不可用时，执行路径返回 `executor_failure`——拒绝执行，不回落到宿主执行。`team.deleteWorkspace` 先调用 `boundary.dropWorkspace` 再删除成员面：先落 `REVOKED` 标记（写失败报错、不吞），再杀光该工作区运行——其后的 `start`/`read`/`publishArtifact` 一律拒绝（标记兜底竞态）。取消的运行不能发布产物；产物名限 `[A-Za-z0-9._-]` 且禁止前导点，杜绝目录穿越。
 
 ## 配置
 
