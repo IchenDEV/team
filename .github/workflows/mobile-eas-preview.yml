@@ -11,7 +11,7 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository &&
       contains(github.event.pull_request.labels.*.name, '🚀 Mobile Continuous Deployment') &&
       (github.event.action != 'labeled' || github.event.label.name == '🚀 Mobile Continuous Deployment')
-    runs-on: blacksmith-8vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     concurrency:
       group: mobile-eas-preview-ios-${{ github.event.pull_request.number }}
       cancel-in-progress: true
@@ -137,7 +137,7 @@ jobs:
           fi
           echo "link=$link" >> "$GITHUB_OUTPUT"
           if [ -z "$link" ]; then echo "build=true" >> "$GITHUB_OUTPUT"; fi
-          echo "ios fingerprint \`$hash\`: ${link:-no client yet, building on Blacksmith}" >> "$GITHUB_STEP_SUMMARY"
+          echo "ios fingerprint \`$hash\`: ${link:-no client yet, building on GitHub-hosted runners}" >> "$GITHUB_STEP_SUMMARY"
 
       - id: update
         name: Publish the update
@@ -155,7 +155,7 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository &&
       contains(github.event.pull_request.labels.*.name, '🚀 Mobile Continuous Deployment') &&
       (github.event.action != 'labeled' || github.event.label.name == '🚀 Mobile Continuous Deployment')
-    runs-on: blacksmith-8vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     concurrency:
       group: mobile-eas-preview-android-${{ github.event.pull_request.number }}
       cancel-in-progress: true
@@ -280,7 +280,7 @@ jobs:
           fi
           echo "link=$link" >> "$GITHUB_OUTPUT"
           if [ -z "$link" ]; then echo "build=true" >> "$GITHUB_OUTPUT"; fi
-          echo "android fingerprint \`$hash\`: ${link:-no client yet, building on Blacksmith}" >> "$GITHUB_STEP_SUMMARY"
+          echo "android fingerprint \`$hash\`: ${link:-no client yet, building on GitHub-hosted runners}" >> "$GITHUB_STEP_SUMMARY"
 
       - id: update
         name: Publish the update
@@ -295,7 +295,7 @@ jobs:
     name: Android preview client
     needs: android
     if: needs.android.outputs.build == 'true'
-    runs-on: blacksmith-32vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     concurrency:
       # One build per fingerprint; a second PR with the same one finds the tag.
@@ -375,11 +375,12 @@ jobs:
             echo "CMAKE_CXX_COMPILER_LAUNCHER=ccache"
           } >> "$GITHUB_ENV"
 
-      - name: Mount build cache
+      - name: Restore build cache
         if: steps.record.outputs.built != 'true'
-        uses: useblacksmith/stickydisk@3f6be1451e3cad893b778bc93495c80452a5da26 # v1.7.2
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          key: ${{ github.repository }}-android-preview-build
+          key: ${{ github.repository }}-android-preview-build-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: ${{ github.repository }}-android-preview-build-${{ runner.os }}-
           path: ~/.cache/t3-android-preview
 
       - name: Configure Gradle and ccache
@@ -387,9 +388,9 @@ jobs:
         run: |
           mkdir -p "$GRADLE_USER_HOME" "$CCACHE_DIR"
           rm -rf "$EAS_LOCAL_BUILD_WORKINGDIR"
-          # No daemon: nothing should hold the sticky disk open when it is committed.
+          # No daemon: finish writes before the build cache is saved.
           printf 'org.gradle.caching=true\norg.gradle.daemon=false\n' > "$GRADLE_USER_HOME/gradle.properties"
-          sudo sed -i 's|http://|https://|g' /etc/apt/blacksmith-ubuntu-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources
+          sudo sed -i 's|http://|https://|g' /etc/apt/sources.list.d/ubuntu.sources
           sudo apt-get update -qq && sudo apt-get install -y -qq ccache
           ccache --zero-stats
 
@@ -479,7 +480,7 @@ jobs:
     name: iOS preview client
     needs: ios
     if: needs.ios.outputs.build == 'true'
-    runs-on: blacksmith-12vcpu-macos-27
+    runs-on: xcode-27
     timeout-minutes: 60
     concurrency:
       # One build per fingerprint; a second PR with the same one finds the tag.
@@ -652,7 +653,7 @@ jobs:
     name: Mobile preview comment
     needs: [android, ios, android-build, ios-build]
     if: always() && !cancelled() && (needs.android.result == 'success' || needs.ios.result == 'success')
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     concurrency:
       group: mobile-preview-comment-${{ github.event.pull_request.number }}
       cancel-in-progress: false
