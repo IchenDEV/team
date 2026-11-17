@@ -14,7 +14,6 @@ import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
 import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
 import * as ManagedPolicy from "../policy/ManagedPolicy.ts";
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
-import * as Sqlite from "../persistence/Sqlite.ts";
 import * as TeamMemberships from "../persistence/TeamMemberships.ts";
 import * as TeamArtifacts from "./TeamArtifacts.ts";
 import * as TeamArtifactsHttp from "./TeamArtifactsHttp.ts";
@@ -31,17 +30,21 @@ const teamConfig: TeamControlPlane.TeamConfig = {
   ],
 };
 
-const appEnv = Layer.mergeAll(
-  TeamArtifacts.layer.pipe(Layer.provide(TeamMemberships.layer)),
-  TeamRuntime.layer(teamConfig),
-  TeamMemberships.layer,
-).pipe(
-  Layer.provideMerge(Sqlite.layerMemory),
+const appEnv = TeamRuntime.layer(teamConfig).pipe(
   Layer.provideMerge(ServerSecretStore.layer),
   Layer.provideMerge(ServerEnvironment.layerIdentity),
   Layer.provideMerge(ManagedPolicy.layerTest()),
   Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "team-identity-seam-" })),
   Layer.provideMerge(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)),
+);
+
+const surface = HttpRouter.serve(TeamArtifactsHttp.layer, {
+  disableListenLog: true,
+  disableLogger: true,
+}).pipe(
+  Layer.provide(TeamArtifacts.layer.pipe(Layer.provide(TeamMemberships.layer))),
+  Layer.provideMerge(appEnv),
+  Layer.provideMerge(NodeHttpServer.layerTest),
 );
 
 const content = Buffer.from("seam-content").toString("base64");
@@ -50,12 +53,7 @@ const content = Buffer.from("seam-content").toString("base64");
 it.effect("one team login token serves both the membership and artifact surfaces", () =>
   Effect.scoped(
     Effect.gen(function* () {
-      const services = yield* Layer.build(
-        HttpRouter.serve(TeamArtifactsHttp.layer, {
-          disableListenLog: true,
-          disableLogger: true,
-        }).pipe(Layer.provideMerge(appEnv), Layer.provideMerge(NodeHttpServer.layerTest)),
-      );
+      const services = yield* Layer.build(surface);
       return yield* Effect.gen(function* () {
         const client = yield* HttpClient.HttpClient;
         const members = yield* TeamMemberships.TeamMembershipRepository;
