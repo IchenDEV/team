@@ -34,6 +34,7 @@ import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
 import type { ManagedPolicyRefusedError } from "../policy/managedLimits.ts";
 import { PersistenceDecodeError, PersistenceSqlError } from "../persistence/Errors.ts";
 
+const isTeamError = Schema.is(TeamError);
 const Workspace = Schema.Struct({
   id: TeamId,
   projectId: ProjectId,
@@ -228,9 +229,11 @@ export const layer = (config: TeamConfig) =>
         if (result.access.role !== "Owner") return yield* new TeamError({ rule: "owner_required" });
         return result;
       });
+      type NativeClient = RpcClient.RpcClient<RpcGroup.Rpcs<typeof WsRpcGroup>, RpcClientError>;
       const readRun = Effect.fn("TeamControlPlane.readRun")(function* (
         workspace: typeof Workspace.Type,
         id: string,
+        connectedClient?: NativeClient,
       ) {
         if (
           !new RegExp(`^team\\.${workspace.id}\\.[A-Za-z0-9_-]{1,64}\\.[A-Za-z0-9_-]{1,64}$`).test(
@@ -238,9 +241,13 @@ export const layer = (config: TeamConfig) =>
           )
         )
           return yield* new TeamError({ rule: "run_not_found" });
-        const projection = yield* withClient(workspace, (client) =>
-          client[ORCHESTRATION_V2_WS_METHODS.getThreadProjection]({ threadId: ThreadId.make(id) }),
-        );
+        const query = (client: NativeClient) =>
+          client[ORCHESTRATION_V2_WS_METHODS.getThreadProjection]({ threadId: ThreadId.make(id) });
+        const projection = yield* connectedClient === undefined
+          ? withClient(workspace, query)
+          : query(connectedClient).pipe(
+              Effect.mapError(() => new TeamError({ rule: "executor_failure" })),
+            );
         if (projection.thread.projectId !== workspace.projectId || projection.runs.length !== 1)
           return yield* new TeamError({ rule: "run_not_found" });
         const run = projection.runs[0]!;
@@ -393,11 +400,19 @@ export const layer = (config: TeamConfig) =>
                 Effect.map(RpcClient.make(WsRpcGroup), (client) =>
                   client[ORCHESTRATION_V2_WS_METHODS.subscribeThread]({
                     threadId: ThreadId.make(input.runId),
-                  }),
+                  }).pipe(
+                    Stream.mapEffect(
+                      Effect.fn("TeamControlPlane.readStreamRun")(function* () {
+                        yield* authorize(authorization, input.workspaceId);
+                        return yield* readRun(workspace, input.runId, client);
+                      }),
+                    ),
+                  ),
                 ),
               ).pipe(
-                Stream.mapError(() => new TeamError({ rule: "executor_failure" })),
-                Stream.mapEffect(() => read(authorization, input)),
+                Stream.mapError((cause) =>
+                  isTeamError(cause) ? cause : new TeamError({ rule: "executor_failure" }),
+                ),
                 Stream.provide(clientLayer(workspace)),
                 Stream.interruptWhen(
                   Effect.raceFirst(
