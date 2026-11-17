@@ -18,15 +18,11 @@ const config: TeamControlPlane.TeamConfig = {
       id,
       projectId: ProjectId.make(id),
       modelSelection: { instanceId: ProviderInstanceId.make("devReplay"), model: "todo-list" },
-      rpcUrl: "ws://127.0.0.1:1/ws?orchestrationProtocol=2",
-      bearer: "e".repeat(32),
     })),
     {
       id: "delta",
       projectId: ProjectId.make("gamma"),
       modelSelection: { instanceId: ProviderInstanceId.make("devReplay"), model: "todo-list" },
-      rpcUrl: "ws://127.0.0.1:1/ws?orchestrationProtocol=2",
-      bearer: "e".repeat(32),
     },
   ],
 };

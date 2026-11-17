@@ -14,7 +14,7 @@
 
 ## 配置
 
-`TeamConfig`（`team-p0.ts` 的 CONFIG.json）每工作区新增两个可选字段：`credentials`（注入沙箱的键值 env）与 `networkMode`；顶层新增可选 `sandboxStateDir`。旧配置不含这些字段时边界失败关闭。
+`TeamConfig`（`TEAM_CONFIG_FILE` 指向的 JSON）每工作区新增两个可选字段：`credentials`（注入沙箱的键值 env）与 `networkMode`；顶层新增可选 `sandboxStateDir`。旧配置不含这些字段时边界失败关闭。
 
 ## 验收证据
 

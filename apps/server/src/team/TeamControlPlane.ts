@@ -1,4 +1,6 @@
 import {
+  AuthOrchestrationOperateScope,
+  AuthOrchestrationReadScope,
   ModelSelection,
   ProjectId,
   TeamError,
@@ -36,8 +38,6 @@ const Workspace = Schema.Struct({
   id: TeamId,
   projectId: ProjectId,
   modelSelection: ModelSelection,
-  rpcUrl: Schema.String,
-  bearer: Schema.String.check(Schema.isMinLength(32)),
   // Restricted credential scope injected into this workspace's sandbox only;
   // never shared across tenants. networkMode defaults to a fully cut network.
   credentials: Schema.optional(Schema.Record(Schema.String, Schema.String)),
@@ -45,12 +45,20 @@ const Workspace = Schema.Struct({
 });
 // Runs execute in a per-workspace container sandbox under this state directory;
 // when it is absent the boundary fails closed instead of falling back to the host.
+// The environment server serves this configuration and owns the same session as
+// the artifact routes, so a workspace entry names no executor URL or bearer.
 export const TeamConfig = Schema.Struct({
   workspaces: Schema.Array(Workspace),
   sandboxStateDir: Schema.optional(Schema.String),
 });
 export type TeamConfig = typeof TeamConfig.Type;
 export const userSubject = (id: string) => `team:user:${id}`;
+// The environment session is also the artifact session, so its scopes must match
+// the role the member holds: a Viewer's session must not carry execution.
+const invitationScopes = (role: Role) =>
+  role === "Viewer"
+    ? [AuthOrchestrationReadScope]
+    : [AuthOrchestrationReadScope, AuthOrchestrationOperateScope];
 
 type Access = typeof TeamWorkspaceAccess.Type;
 type Role = typeof TeamRole.Type;
@@ -276,10 +284,16 @@ export const layer = (config: TeamConfig) =>
                 discardIssuedSession(cause).pipe(Effect.andThen(verificationFailure(cause))),
               ),
             );
-          yield* admit(session).pipe(
-            Effect.andThen(storage(members.listWorkspaces(session.subject))),
-            Effect.onError(() => discardSession(session.sessionId)),
-          );
+          yield* Effect.gen(function* () {
+            yield* admit(session);
+            const access = yield* storage(members.listWorkspaces(session.subject));
+            // A credential minted before a demotion can outlive the role it was issued for.
+            if (
+              !access.some((entry) => entry.role !== "Viewer") &&
+              session.scopes.includes(AuthOrchestrationOperateScope)
+            )
+              return yield* new TeamError({ rule: "authentication_required" });
+          }).pipe(Effect.onError(() => discardSession(session.sessionId)));
           return token;
         }),
         logout: Effect.fn("TeamControlPlane.logout")(function* (authorization) {
@@ -348,7 +362,7 @@ export const layer = (config: TeamConfig) =>
                 const invitation = yield* auth
                   .createPairingLink({
                     subject: userSubject(input.userId),
-                    scopes: ["orchestration:read"],
+                    scopes: invitationScopes(input.role),
                   })
                   .pipe(Effect.catch(authFailure));
                 return { credential: invitation.credential };

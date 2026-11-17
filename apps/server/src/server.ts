@@ -75,6 +75,8 @@ import * as DocumentText from "./provider/DocumentText.ts";
 import * as AcpRegistrySupport from "@t3tools/provider-acp-registry/server/AcpRegistrySupport";
 import * as TeamArtifacts from "./team/TeamArtifacts.ts";
 import * as TeamArtifactsHttp from "./team/TeamArtifactsHttp.ts";
+import * as TeamConfig from "./team/teamConfig.ts";
+import * as TeamRuntime from "./team/TeamRuntime.ts";
 import * as CheckpointDiffQuery from "./checkpointing/CheckpointDiffQuery.ts";
 import * as NativeChildWorkQuery from "./orchestration-v2/NativeChildWorkQuery.ts";
 import * as CheckpointStore from "./checkpointing/CheckpointStore.ts";
@@ -845,6 +847,14 @@ const layerMakeRoutes = Layer.mergeAll(
     ServerHttp.layerAttachmentUploadRoute,
     TeamArtifactsHttp.layer.pipe(
       Layer.provide(TeamArtifacts.layer.pipe(Layer.provide(TeamMemberships.layer))),
+    ),
+    // Membership and artifacts share this environment's session, so the control
+    // plane runs here instead of in a separate gateway process.
+    Layer.unwrap(
+      Effect.gen(function* () {
+        const config = yield* TeamConfig.load;
+        return TeamRuntime.http.pipe(Layer.provide(TeamRuntime.layerOnEnvironment(config)));
+      }),
     ),
     GuestHttp.layer,
     DeviceHubProxy.layer,
