@@ -74,6 +74,40 @@ const withLauncher = () => {
   };
 };
 
+// Playwright resolves the launch on Chromium's "DevTools listening" stderr
+// line, which Chromium flushes before writing DevToolsActivePort into the
+// profile. Wait for the file itself, and fail if the browser exits first.
+const devToolsActivePort = (context: BrowserContext, userDataDir: string) =>
+  new Promise<string>((resolve, reject) => {
+    const file = NodePath.join(userDataDir, "DevToolsActivePort");
+    const onClose = () =>
+      settle(() =>
+        reject(new Error("The desktop browser exited before publishing DevToolsActivePort.")),
+      );
+    let done = false;
+    const settle = (settled: () => void) => {
+      if (done) return;
+      done = true;
+      watcher.close();
+      context.off("close", onClose);
+      settled();
+    };
+    const check = () => {
+      let port: string;
+      try {
+        port = NodeFS.readFileSync(file, "utf8").split("\n")[0]!;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+        settle(() => reject(error));
+        return;
+      }
+      settle(() => resolve(port));
+    };
+    const watcher = NodeFS.watch(userDataDir, check);
+    context.once("close", onClose);
+    check();
+  });
+
 beforeEach(() => {
   launches.launch.mockReset();
   launches.persistent.mockReset();
@@ -363,10 +397,7 @@ describe("ServerBrowserContexts", () => {
         args: ["--remote-debugging-port=0"],
       });
       try {
-        const [port] = NodeFS.readFileSync(
-          NodePath.join(userDataDir, "DevToolsActivePort"),
-          "utf8",
-        ).split("\n");
+        const port = await devToolsActivePort(desktop, userDataDir);
         const { browser, page } = await pool.connectDesktopPage(`http://127.0.0.1:${port}`);
         try {
           const file = NodePath.join(directory, "large.bin");
