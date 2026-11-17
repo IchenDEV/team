@@ -203,6 +203,11 @@ const make = Effect.fn("DockerSandbox.make")(function* (options: {
 
     startRun: Effect.fn("DockerSandbox.startRun")(function* (workspace, runName, text) {
       yield* requireAvailable("run.start");
+      // Runs execute as the host uid, not container root: the mounted root is
+      // owned by that uid and --cap-drop ALL removes CAP_DAC_OVERRIDE, so a
+      // root container could not write its own workspace.
+      const containerUser =
+        typeof process.getuid === "function" ? ["--user", String(process.getuid())] : [];
       const textDigest = NodeCrypto.createHash("sha256").update(text).digest("hex");
       const existing = yield* readRun(runName).pipe(
         Effect.map((info) => info as SandboxRunInfo | undefined),
@@ -219,6 +224,7 @@ const make = Effect.fn("DockerSandbox.make")(function* (options: {
           "--detach",
           "--name",
           runName,
+          ...containerUser,
           "--label",
           `${WORKSPACE_LABEL}=${workspace.id}`,
           "--label",
