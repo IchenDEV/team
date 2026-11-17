@@ -260,8 +260,24 @@ const make = Effect.fn("DockerSandbox.make")(function* (options: {
     waitRun: Effect.fn("DockerSandbox.waitRun")(function* (runName: string) {
       yield* requireAvailable("run.wait");
       yield* readRun(runName);
-      yield* docker(["wait", runName], "run.wait");
-      return yield* readRun(runName);
+      const waited = yield* docker(["wait", runName], "run.wait");
+      if (waited.code !== 0) {
+        return yield* waited.stderr.trim().toLowerCase().includes("no such")
+          ? new SandboxRunNotFound({ runName })
+          : new SandboxUnavailable({
+              operation: "run.wait",
+              detail: waited.stderr.trim() || `exit code ${waited.code}`,
+            });
+      }
+      // `docker wait` prints the container exit code when it unblocks and is
+      // authoritative: a follow-up inspect can briefly report the pre-exit
+      // state on containerd-backed engines.
+      const exitCode = Number.parseInt(waited.stdout.trim(), 10);
+      const info = yield* readRun(runName);
+      if (Number.isNaN(exitCode)) return info;
+      const status: SandboxRunStatus =
+        exitCode === 0 ? "completed" : exitCode === KILLED_EXIT_CODE ? "cancelled" : "failed";
+      return { ...info, status };
     }),
 
     cancelRun: Effect.fn("DockerSandbox.cancelRun")(function* (runName: string) {

@@ -3,6 +3,7 @@ import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
+import * as Schedule from "effect/Schedule";
 import * as Schema from "effect/Schema";
 
 import {
@@ -155,7 +156,15 @@ const make = Effect.fn("TeamExecutionBoundary.make")(function* (options: {
         yield* requireLive(workspace);
         if (!scopedRunId(workspace.id, runId) || !ARTIFACT_NAME_PATTERN.test(name))
           return yield* new SandboxRunNotFound({ runName: runId });
-        const info = yield* sandbox.readRun(dockerName(runId));
+        // Inspect can briefly lag a just-finished container; poll until a
+        // terminal status before judging publication eligibility.
+        const info = yield* sandbox.readRun(dockerName(runId)).pipe(
+          Effect.repeat({
+            until: (read) => read.status !== "running",
+            schedule: Schedule.spaced("100 millis"),
+            times: 30,
+          }),
+        );
         if (info.status !== "completed")
           return yield* new SandboxUnavailable({
             operation: "artifact.publish",
