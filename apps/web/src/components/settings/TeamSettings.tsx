@@ -2,13 +2,18 @@ import { useEffect, useState } from "react";
 
 import {
   fetchArtifactContent,
+  isSessionLost,
+  isWorkspaceAccessLost,
   type TeamArtifact,
   type TeamRole,
 } from "@t3tools/client-runtime/team";
 import { CopyIcon, DownloadIcon, ExternalLinkIcon } from "lucide-react";
 
 import { requestConfirmDialog } from "../../confirmDialog";
-import { resolvePrimaryEnvironmentHttpUrl } from "../../environments/primary/target";
+import {
+  readPrimaryEnvironmentTarget,
+  resolvePrimaryEnvironmentHttpUrl,
+} from "../../environments/primary/target";
 import { useTeamStore } from "../../team/teamStore";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -40,8 +45,23 @@ function ConnectSection() {
   const busy = useTeamStore((state) => state.busy);
   const workspacesError = useTeamStore((state) => state.workspacesError);
   const [credential, setCredential] = useState("");
-  // The membership plane lives on the environment the app is connected to; there is no other address.
-  const environmentUrl = resolvePrimaryEnvironmentHttpUrl("/").replace(/\/+$/, "");
+  // The membership plane lives on the environment the app is connected to. A desktop with its
+  // local environment disabled has none: say so instead of resolving an address that throws.
+  const environmentUrl =
+    readPrimaryEnvironmentTarget() === null
+      ? null
+      : resolvePrimaryEnvironmentHttpUrl("/").replace(/\/+$/, "");
+
+  if (environmentUrl === null) {
+    return (
+      <SettingsSection title="Team">
+        <p className="px-3 py-3 text-sm text-muted-foreground sm:px-4">
+          Team membership lives on an environment. Connect one, or enable the local environment, to
+          sign in here.
+        </p>
+      </SettingsSection>
+    );
+  }
 
   return (
     <SettingsSection title="Team">
@@ -316,7 +336,12 @@ function ArtifactsSection() {
   const artifactsUnavailable = useTeamStore((state) => state.artifactsUnavailable);
   const artifactBaseUrl = useTeamStore((state) => state.artifactBaseUrl);
   const token = useTeamStore((state) => state.token);
-  const [preview, setPreview] = useState<{ name: string; url: string } | null>(null);
+  const currentWorkspaceId = useTeamStore((state) => state.currentWorkspaceId);
+  const [preview, setPreview] = useState<{
+    workspaceId: string | null;
+    name: string;
+    url: string;
+  } | null>(null);
 
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- releases the preview blob URL held outside React
   useEffect(() => {
@@ -346,7 +371,7 @@ function ArtifactsSection() {
         if (mode === "open") {
           setPreview((current) => {
             if (current !== null) URL.revokeObjectURL(current.url);
-            return { name: artifact.name, url };
+            return { workspaceId: currentWorkspaceId, name: artifact.name, url };
           });
           return;
         }
@@ -357,6 +382,10 @@ function ArtifactsSection() {
         setTimeout(() => URL.revokeObjectURL(url), 60_000);
       })
       .catch((error: unknown) => {
+        if (isSessionLost(error) || isWorkspaceAccessLost(error)) {
+          useTeamStore.getState().handleWorkspaceAccessLost(error, "artifacts", String(error));
+          return;
+        }
         toastManager.add({
           title: `Could not ${mode} ${artifact.name}`,
           description: error instanceof Error ? error.message : String(error),
@@ -422,7 +451,7 @@ function ArtifactsSection() {
     <SettingsSection title="Shared artifacts">
       {content}
       <TeamErrorNote message={artifactsError} />
-      {preview !== null ? (
+      {preview !== null && preview.workspaceId === currentWorkspaceId ? (
         <div className="space-y-2 px-3 py-3 sm:px-4">
           <div className="flex items-center justify-between gap-2">
             <span className="truncate text-sm">{preview.name}</span>

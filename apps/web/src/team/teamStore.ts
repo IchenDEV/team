@@ -206,9 +206,8 @@ export const useTeamStore = create<TeamState>()((set, get) => ({
         set({ artifactsUnavailable: true, artifacts: [] });
         return;
       }
-      // The members plane decides who belongs to the workspace; an artifact denial only says
-      // this environment cannot serve that member's artifacts, so it must not drop the choice.
-      set({ artifactsError: errorMessage(error) });
+      // One session serves both surfaces now, so a rejected member means the same thing here.
+      get().handleWorkspaceAccessLost(error, "artifacts", errorMessage(error));
     }
   },
 
