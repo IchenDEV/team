@@ -208,7 +208,9 @@ export const useTeamStore = create<TeamState>()(
             set({ artifactsUnavailable: true, artifacts: [] });
             return;
           }
-          get().handleWorkspaceAccessLost(error, "artifacts", errorMessage(error));
+          // The members plane decides who belongs to the workspace; an artifact denial only says
+          // this environment cannot serve that member's artifacts, so it must not drop the choice.
+          set({ artifactsError: errorMessage(error) });
         }
       },
 

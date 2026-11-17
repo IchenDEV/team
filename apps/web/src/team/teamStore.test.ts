@@ -150,6 +150,29 @@ describe("teamStore", () => {
     expect(state.artifacts).toEqual([]);
   });
 
+  it("keeps the workspace selected when only the artifact route denies the member", async () => {
+    const { listArtifacts } = await team();
+    vi.mocked(listArtifacts).mockRejectedValue(
+      new TeamApiError({
+        message: "no team user here",
+        status: 403,
+        rule: "invited_user_required",
+      }),
+    );
+    useTeamStore.setState({
+      token: "token",
+      currentWorkspaceId: "ws_a",
+      workspaces: [WORKSPACE_A],
+    });
+
+    await useTeamStore.getState().loadArtifacts();
+
+    const state = useTeamStore.getState();
+    expect(state.currentWorkspaceId).toBe("ws_a");
+    expect(state.token).toBe("token");
+    expect(state.artifactsError).toContain("no team user here");
+  });
+
   it("records the environment origin the artifact links must use", async () => {
     const { listArtifacts } = await team();
     vi.mocked(listArtifacts).mockResolvedValue([]);
