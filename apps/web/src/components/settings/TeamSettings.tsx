@@ -4,6 +4,7 @@ import type { TeamArtifact, TeamRole } from "@t3tools/client-runtime/team";
 import { CopyIcon, DownloadIcon, ExternalLinkIcon } from "lucide-react";
 
 import { requestConfirmDialog } from "../../confirmDialog";
+import { teamEnvironmentUrl } from "../../team/teamClient";
 import { useTeamStore } from "../../team/teamStore";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -39,11 +40,11 @@ function ConnectSection() {
   const connect = useTeamStore((state) => state.connect);
   const busy = useTeamStore((state) => state.busy);
   const workspacesError = useTeamStore((state) => state.workspacesError);
-  const [url, setUrl] = useState(gatewayUrl);
+  const [url, setUrl] = useState(gatewayUrl || teamEnvironmentUrl());
   const [credential, setCredential] = useState("");
 
   return (
-    <SettingsSection title="Team gateway">
+    <SettingsSection title="Team environment">
       <form
         className="space-y-3 px-3 py-3 sm:px-4"
         onSubmit={(event) => {
@@ -52,14 +53,14 @@ function ConnectSection() {
         }}
       >
         <p className="text-sm text-muted-foreground">
-          Connect to a team gateway with the invitation credential the workspace Owner gave you.
+          Connect to this environment with the invitation credential the workspace Owner gave you.
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <Input
             value={url}
             onChange={(event) => setUrl(event.target.value)}
-            placeholder="Gateway URL"
-            aria-label="Team gateway URL"
+            placeholder="Environment URL"
+            aria-label="Team environment URL"
             className="w-full sm:w-64"
           />
           <Input
