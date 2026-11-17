@@ -2,6 +2,8 @@ import { ProjectId } from "@t3tools/contracts";
 import { TeamApiError } from "@t3tools/client-runtime/team";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
+import { DateTime } from "effect";
+
 import { useTeamStore } from "./teamStore";
 
 vi.mock("./teamClient", () => ({
@@ -307,7 +309,7 @@ describe("human call inbox", () => {
       question: "Which branch should I cut?",
       options: ["main"],
       contextLink: null,
-      raisedAt: new Date("2026-11-18T00:00:00.000Z"),
+      raisedAt: DateTime.makeUnsafe("2026-11-18T00:00:00.000Z"),
       expiresAt: null,
     };
     vi.mocked(api.listHumanCalls).mockResolvedValue([call]);

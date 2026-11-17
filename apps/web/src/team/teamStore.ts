@@ -112,6 +112,8 @@ export const useTeamStore = create<TeamState>()(
     (set, get) => ({
       gatewayUrl: DEFAULT_TEAM_GATEWAY_URL,
       token: null,
+      humanCalls: null,
+      humanCallsError: null,
       workspaces: null,
       workspacesError: null,
       currentWorkspaceId: null,
