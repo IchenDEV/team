@@ -1,4 +1,5 @@
 import {
+  isMembershipRevocation,
   isSessionLost,
   isTeamApiError,
   isWorkspaceAccessLost,

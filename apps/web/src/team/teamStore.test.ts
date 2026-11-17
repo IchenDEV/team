@@ -231,6 +231,25 @@ describe("teamStore", () => {
     expect(state.workspacesError).toBeNull();
   });
 
+  it("drops the workspace when the invitation reveals a lost membership", async () => {
+    const { inviteMember } = await team();
+    vi.mocked(inviteMember).mockRejectedValue(
+      new TeamApiError({ message: "gone", status: 403, rule: "workspace_membership_required" }),
+    );
+    useTeamStore.setState({
+      token: "token",
+      currentWorkspaceId: "ws_a",
+      workspaces: [WORKSPACE_A, WORKSPACE_B],
+    });
+
+    await expect(useTeamStore.getState().invite({ name: "Bob", role: "Viewer" })).rejects.toThrow();
+
+    const state = useTeamStore.getState();
+    expect(state.currentWorkspaceId).toBeNull();
+    expect(state.token).toBe("token");
+    expect(state.workspaces?.map((workspace) => workspace.id)).toEqual(["ws_b"]);
+  });
+
   it("disconnect clears the token and every workspace-scoped row", async () => {
     const { logout } = await team();
     vi.mocked(logout).mockResolvedValue(undefined);
