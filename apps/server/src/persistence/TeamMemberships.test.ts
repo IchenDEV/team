@@ -16,11 +16,10 @@ import * as SessionStore from "../auth/SessionStore.ts";
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
 import * as ManagedPolicy from "../policy/ManagedPolicy.ts";
-import migration from "./Migrations/097_TeamMemberships.ts";
 import * as Sqlite from "./Sqlite.ts";
 import * as TeamMemberships from "./TeamMemberships.ts";
 
-const database = Layer.effectDiscard(migration).pipe(Layer.provideMerge(Sqlite.layerMemory));
+const database = Sqlite.layerMemory;
 const membersLayer = TeamMemberships.layer.pipe(Layer.provideMerge(database));
 
 function membershipRule(error: unknown) {
@@ -189,7 +188,6 @@ it.effect(
       const open = () =>
         TeamMemberships.layer.pipe(Layer.provideMerge(Sqlite.layerFromPath(dbPath)));
       yield* Effect.gen(function* () {
-        yield* migration;
         const members = yield* seed;
         yield* members.setMember("invited:alice", "a", "bob", "Editor");
         yield* members.renameWorkspace("invited:alice", "a", "Persistent");

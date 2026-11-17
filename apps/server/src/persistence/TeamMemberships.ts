@@ -1,17 +1,18 @@
-import { ProjectId } from "@t3tools/contracts";
+import { TeamWorkspace, TeamWorkspaceAccess, TeamMember, TeamRole } from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
+import * as PubSub from "effect/PubSub";
 import * as SqlClient from "effect/sql/SqlClient";
 
 import { PersistenceDecodeError, PersistenceSqlError, toPersistenceSqlError } from "./Errors.ts";
 
 const User = Schema.Struct({ id: Schema.String, subject: Schema.String, name: Schema.String });
-const Workspace = Schema.Struct({ id: Schema.String, projectId: ProjectId, name: Schema.String });
-const Role = Schema.Literals(["Owner", "Editor", "Viewer"]);
-const Membership = Schema.Struct({ userId: Schema.String, name: Schema.String, role: Role });
-const Access = Schema.Struct({ ...Workspace.fields, userId: Schema.String, role: Role });
+const Workspace = TeamWorkspace;
+const Role = TeamRole;
+const Membership = TeamMember;
+const Access = TeamWorkspaceAccess;
 
 export class TeamMembershipError extends Schema.TaggedError<TeamMembershipError>()(
   "TeamMembershipError",
@@ -32,6 +33,10 @@ type StoreError = TeamMembershipError | PersistenceSqlError | PersistenceDecodeE
 export class TeamMembershipRepository extends Context.Service<
   TeamMembershipRepository,
   {
+    readonly awaitRevocation: (
+      subject: string,
+      workspaceId: string,
+    ) => Effect.Effect<never, StoreError>;
     readonly inviteUser: (input: typeof User.Type) => Effect.Effect<void, StoreError>;
     readonly createWorkspace: (
       subject: string,
@@ -87,6 +92,7 @@ const decodeRows = <A>(
 
 const make = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
+  const changes = yield* PubSub.unbounded<string>();
   const transaction = <A>(operation: string, effect: Effect.Effect<A, StoreError>) =>
     sql.withTransaction(effect).pipe(
       Effect.catchTags({
@@ -154,10 +160,26 @@ const make = Effect.gen(function* () {
   });
 
   return TeamMembershipRepository.of({
+    awaitRevocation: Effect.fn("TeamMembershipRepository.awaitRevocation")(function* (
+      subject,
+      workspaceId,
+    ) {
+      const subscription = yield* PubSub.subscribe(changes);
+      while (true) {
+        yield* resolve(subject, workspaceId);
+        let changed = yield* PubSub.take(subscription);
+        while (changed !== workspaceId) changed = yield* PubSub.take(subscription);
+      }
+    }, Effect.scoped),
     inviteUser: Effect.fn("TeamMembershipRepository.inviteUser")(function (input) {
-      return sql`INSERT INTO team_users (id, subject, name) VALUES (${input.id}, ${input.subject}, ${input.name})`.pipe(
-        Effect.asVoid,
+      return sql`INSERT INTO team_users (id, subject, name) VALUES (${input.id}, ${input.subject}, ${input.name})
+        ON CONFLICT(id) DO UPDATE SET id = excluded.id WHERE team_users.subject = excluded.subject RETURNING id`.pipe(
         Effect.mapError(toPersistenceSqlError("TeamMembershipRepository.inviteUser")),
+        Effect.flatMap((rows) =>
+          rows.length === 1
+            ? Effect.void
+            : Effect.fail(new TeamMembershipError({ rule: "invited_user_required" })),
+        ),
       );
     }),
     createWorkspace: Effect.fn("TeamMembershipRepository.createWorkspace")(
@@ -203,6 +225,9 @@ const make = Effect.gen(function* () {
               Effect.mapError(toPersistenceSqlError("TeamMembershipRepository.deleteWorkspace")),
             );
           }),
+        ).pipe(
+          Effect.tap(() => PubSub.publish(changes, workspaceId)),
+          Effect.uninterruptible,
         );
       },
     ),
@@ -236,6 +261,9 @@ const make = Effect.gen(function* () {
           ON CONFLICT(workspace_id, user_id) DO UPDATE SET role = excluded.role
         `.pipe(Effect.mapError(toPersistenceSqlError("TeamMembershipRepository.setMember")));
           }),
+        ).pipe(
+          Effect.tap(() => PubSub.publish(changes, workspaceId)),
+          Effect.uninterruptible,
         );
       },
     ),
@@ -252,6 +280,9 @@ const make = Effect.gen(function* () {
             if (rows.length === 0)
               return yield* new TeamMembershipError({ rule: "member_not_found" });
           }),
+        ).pipe(
+          Effect.tap(() => PubSub.publish(changes, workspaceId)),
+          Effect.uninterruptible,
         );
       },
     ),
