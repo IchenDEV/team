@@ -21,20 +21,9 @@
 
 ## 同步上游代码
 
-日常同步请运行脚本：
-`scripts/sync-upstream.sh`
+上游同步由 `Sync upstream` 工作流自动完成：每六小时检测上游 `main` 的新提交，生成集成候选分支和草稿合并请求，由人工审查后合入。自动化不会改动 `main`，也不会向上游推送。
 
-同步规则：
-
-1. 运行前必须保证本地没有未提交的改动。
-2. 脚本从 `https://github.com/pingdotgg/t3code.git` 拉取上游主分支并执行合并。
-3. 合并过程不执行强制覆盖。
-4. 完成本地合并后，请人工审查改动并在分支仓库发起合并请求，严禁直接推送到上游仓库。
-
-可选验证命令：
-`gh repo sync IchenDEV/team --source pingdotgg/t3code --branch main`
-
-注意：该命令仅供验证分支状态，严禁使用 `--force`。若出现代码分叉，必须使用上述同步脚本执行合并。
+手动同步仍可运行 `scripts/sync-upstream.sh`；它只在本地生成候选分支，不改动当前检出。操作细节、退出码与前置条件见[上游同步](./docs/operations/upstream-sync.md)。
 
 ## 开源许可
 

@@ -9,6 +9,7 @@ import {
 } from "@t3tools/contracts";
 import { DEFAULT_CLIENT_SETTINGS } from "@t3tools/contracts/settings";
 import {
+  DEFAULT_RESOLVED_KEYBINDINGS,
   compileResolvedKeybindingsConfig,
   mergeWithDefaultKeybindings,
 } from "@t3tools/shared/keybindings";
@@ -30,6 +31,7 @@ import { usePromptStashStore } from "~/promptStashStore";
 import { useRightPanelStore } from "~/rightPanelStore";
 import { getRouter } from "~/router";
 import { appAtomRegistry } from "~/rpc/atomRegistry";
+import { primaryServerKeybindingsAtom } from "~/state/server";
 import { environmentThreadDetails } from "~/state/threads";
 import {
   ENVIRONMENT_ID,
@@ -284,6 +286,10 @@ it("an interrupted image-only first send of a new thread says it may not have be
     .element()
     .dispatchEvent(new ClipboardEvent("paste", { clipboardData, bubbles: true, cancelable: true }));
   await expect.element(page.getByRole("img", { name: "shot.png" })).toBeVisible();
+  // The preview appears before image preparation enables submission.
+  await expect
+    .element(page.getByRole("button", { name: "Submit message", exact: true }))
+    .toBeEnabled();
   await userEvent.keyboard("{Enter}");
   await vi.waitFor(() => expect(launch.calls).toHaveLength(1));
   await userEvent.keyboard("next draft");
@@ -584,18 +590,30 @@ it("a mounted thread view lets go of the thread structures it has replaced", asy
 it("a shortcut conditioned on rightPanelOpen sees the thread's open right panel", async () => {
   await page.viewport(1280, 800);
   const thread = threadWithHistory("thread-panel-shortcut", 1);
-  using _environment = installFakeEnvironment([thread], {
-    keybindings: mergeWithDefaultKeybindings(
-      compileResolvedKeybindingsConfig([
-        { key: "ctrl+t", command: "rightPanel.new", when: "rightPanelOpen && !terminalFocus" },
-        { key: "ctrl+t", command: "rightPanel.toggle", when: "!rightPanelOpen" },
-      ]),
-    ),
-  });
   __setClientSettingsForTests({
     ...DEFAULT_CLIENT_SETTINGS,
     onboardingCompletedAt: "2026-01-01T00:00:00.000Z",
   });
+  // Like an earlier test, subscribe with defaults before reusing the connection.
+  {
+    using _defaults = installFakeEnvironment([thread]);
+    const router = getRouter(
+      createMemoryHistory({ initialEntries: [`/${ENVIRONMENT_ID}/${thread.id}`] }),
+    );
+    await router.load();
+    // AppRoot brings its own router.
+    await using _app = await render(<AppRoot router={router} />, { router: false });
+    await expect.element(page.getByTestId("composer-editor")).toBeVisible();
+    expect(appAtomRegistry.get(primaryServerKeybindingsAtom)).toEqual(DEFAULT_RESOLVED_KEYBINDINGS);
+  }
+  const keybindings = mergeWithDefaultKeybindings(
+    compileResolvedKeybindingsConfig([
+      { key: "ctrl+t", command: "rightPanel.new", when: "rightPanelOpen && !terminalFocus" },
+      { key: "ctrl+t", command: "rightPanel.toggle", when: "!rightPanelOpen" },
+    ]),
+  );
+  using environment = new DisposableStack();
+  environment.use(installFakeEnvironment([thread], { keybindings }));
   const router = getRouter(
     createMemoryHistory({ initialEntries: [`/${ENVIRONMENT_ID}/${thread.id}`] }),
   );
@@ -604,6 +622,9 @@ it("a shortcut conditioned on rightPanelOpen sees the thread's open right panel"
     // AppRoot brings its own router.
     router: false,
   });
+  await vi.waitFor(() =>
+    expect(appAtomRegistry.get(primaryServerKeybindingsAtom)).toEqual(keybindings),
+  );
   const composer = page.getByTestId("composer-editor");
   const toggle = page.getByRole("button", { name: "Toggle right panel", exact: true });
   await expect.element(toggle).toHaveAttribute("aria-pressed", "false");
@@ -613,6 +634,10 @@ it("a shortcut conditioned on rightPanelOpen sees the thread's open right panel"
   await userEvent.keyboard("{Control>}t{/Control}");
   await expect.element(page.getByRole("menuitem", { name: /Files/ })).toBeVisible();
   await expect.element(toggle).toHaveAttribute("aria-pressed", "true");
+  environment.dispose();
+  await vi.waitFor(() =>
+    expect(appAtomRegistry.get(primaryServerKeybindingsAtom)).toEqual(DEFAULT_RESOLVED_KEYBINDINGS),
+  );
 });
 
 it("selecting a side-chat tab focuses that side chat's composer", async () => {

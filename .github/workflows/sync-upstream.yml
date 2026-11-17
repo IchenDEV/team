@@ -1,0 +1,147 @@
+name: Sync upstream
+
+on:
+  schedule:
+    - cron: "23 */6 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - scripts/sync-upstream.sh
+      - scripts/sync-upstream.test.py
+      - .github/workflows/sync-upstream.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-upstream-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'main' }}
+  cancel-in-progress: false
+
+jobs:
+  fixtures:
+    name: Sync Git fixtures
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - run: python3 scripts/sync-upstream.test.py
+
+  sync:
+    name: Prepare candidate
+    needs: fixtures
+    if: >-
+      github.repository == 'IchenDEV/team' &&
+      github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      status: ${{ steps.candidate.outputs.status }}
+      head: ${{ steps.candidate.outputs.head }}
+      base: ${{ steps.candidate.outputs.base }}
+      branch: ${{ steps.candidate.outputs.branch }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Prepare immutable candidate
+        id: candidate
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch --no-tags origin '+refs/heads/sync/upstream-*:refs/heads/sync/upstream-*'
+          result=0
+          bash scripts/sync-upstream.sh || result=$?
+          if [[ "$result" != 0 && "$result" != 2 ]]; then exit "$result"; fi
+      - name: Publish or update fork pull request
+        if: steps.candidate.outputs.status != 'no-update'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ steps.candidate.outputs.branch }}
+          HEAD: ${{ steps.candidate.outputs.head }}
+          BASE: ${{ steps.candidate.outputs.base }}
+          UPSTREAM: ${{ steps.candidate.outputs.upstream }}
+          STATUS: ${{ steps.candidate.outputs.status }}
+        run: |
+          git push origin "$HEAD:refs/heads/$BRANCH"
+          body="$RUNNER_TEMP/upstream-pr.md"
+          cat > "$body" <<EOF
+          <!-- team-upstream-candidate -->
+          上游更新候选，需要人工审查后通过正常门禁合并。
+
+          - 状态：$STATUS
+          - 主分支：$BASE
+          - 上游：$UPSTREAM
+          - 自动化记录：https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+
+          blocked 候选只保留主分支内容和冲突说明，不能当作上游已集成。
+          clean 候选由本次工作流在只读任务中执行受影响检查；仍须核对原生 CI/Check 和审查结果。
+          GITHUB_TOKEN 创建的 PR 检查可能需要维护者批准运行；未运行或跳过均不算通过。
+          EOF
+          prs=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls?state=all&base=main&per_page=100" --slurp)
+          number=$(jq -r --arg branch "$BRANCH" --arg repo "$GITHUB_REPOSITORY" \
+            '[.[][] | select(.head.ref == $branch and .head.repo.full_name == $repo)][0].number // empty' <<< "$prs")
+          if [[ -z "$number" ]]; then
+            gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$BRANCH" --draft \
+              --title "chore: 上游集成候选（${STATUS}）" --body-file "$body"
+          else
+            state=$(gh pr view "$number" --repo "$GITHUB_REPOSITORY" --json state --jq .state)
+            if [[ "$state" == OPEN ]]; then
+              jq -e --argjson number "$number" '.[][] | select(.number == $number) |
+                .user.login == "github-actions[bot]" and
+                (.body | contains("<!-- team-upstream-candidate -->"))' <<< "$prs" > /dev/null
+              gh pr edit "$number" --repo "$GITHUB_REPOSITORY" --body-file "$body"
+            else
+              echo "Candidate already handled as $state; not reopening it."
+            fi
+          fi
+          jq -r --arg branch "$BRANCH" --arg repo "$GITHUB_REPOSITORY" \
+            '.[][] | select(.state == "open" and .user.login == "github-actions[bot]" and
+              .draft == true and
+              .head.repo.full_name == $repo and .head.ref != $branch and
+              (.head.ref | startswith("sync/upstream-")) and
+              (.body | contains("<!-- team-upstream-candidate -->"))) | .number' <<< "$prs" |
+          while read -r stale; do
+            gh pr close "$stale" --repo "$GITHUB_REPOSITORY"
+          done
+      - name: Report blocked integration
+        if: steps.candidate.outputs.status == 'blocked'
+        run: |
+          echo '::error::Upstream candidate is blocked. See its draft PR; main was not changed.'
+          exit 2
+
+  candidate-check:
+    name: Candidate affected checks
+    needs: sync
+    if: >-
+      needs.sync.result == 'success' && needs.sync.outputs.status == 'clean' &&
+      github.repository == 'IchenDEV/team' && github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: ${{ needs.sync.outputs.head }}
+          fetch-depth: 0
+      - name: Check candidate provenance
+        env:
+          HEAD: ${{ needs.sync.outputs.head }}
+          BASE: ${{ needs.sync.outputs.base }}
+          BRANCH: ${{ needs.sync.outputs.branch }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          test "$(git rev-parse HEAD^1)" = "$BASE"
+          test "$(git rev-parse origin/main)" = "$BASE"
+          test "$(git rev-parse "origin/$BRANCH")" = "$HEAD"
+          test ! -e UPSTREAM_SYNC_BLOCKED.md
+      - uses: ./.github/actions/setup-ci-deps
+        with:
+          install-args: --frozen-lockfile
+      - name: Check affected behavior
+        env:
+          BASE: ${{ needs.sync.outputs.base }}
+        run: vp run check:changed "$BASE"
