@@ -26,6 +26,10 @@ const MAX_TIMEOUT_SECONDS = 30 * 24 * 60 * 60;
 const MAX_QUESTION = 2_000;
 const MAX_OPTIONS = 5;
 const MAX_ANSWER = 4_000;
+/** A request is a few hundred bytes; a larger file is refused before it is read into memory. */
+const MAX_REQUEST_BYTES = 16 * 1_024;
+/** One tick handles a bounded number of entries, so a directory full of files cannot stall it. */
+const MAX_ENTRIES_PER_TICK = 64;
 
 export const callsDir = (root: string) => `${root}/calls`;
 export const requestPath = (root: string, callId: string) => `${callsDir(root)}/${callId}.json`;
@@ -246,7 +250,7 @@ export const layer = (options: HumanCallRelayOptions) =>
         const entries = yield* fs
           .readDirectory(dir)
           .pipe(Effect.orElseSucceed(() => [] as ReadonlyArray<string>));
-        for (const entry of entries) {
+        for (const entry of entries.slice(0, MAX_ENTRIES_PER_TICK)) {
           if (!entry.endsWith(".json") || entry.endsWith(".state.json")) continue;
           const callId = entry.slice(0, -".json".length);
           if (!CALL_ID_PATTERN.test(callId)) continue;
@@ -256,6 +260,10 @@ export const layer = (options: HumanCallRelayOptions) =>
           const info = yield* fs.stat(path).pipe(Effect.option);
           if (info._tag === "None" || info.value.type !== "File") {
             yield* reject(workspaceId, callId, "not_a_regular_file").pipe(Effect.ignore);
+            continue;
+          }
+          if (Number(info.value.size) > MAX_REQUEST_BYTES) {
+            yield* reject(workspaceId, callId, "request_too_large").pipe(Effect.ignore);
             continue;
           }
           // One file can never stop the scan: its own failure settles that file only,
