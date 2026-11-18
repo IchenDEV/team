@@ -1,6 +1,7 @@
 // @effect-diagnostics anyUnknownInErrorContext:off layerMergeAllWithDependencies:off - Alchemy provider helpers expose framework-owned any requirements.
 import * as Alchemy from "alchemy";
 import * as Output from "alchemy/Output";
+import { defaultProviderMode } from "alchemy/ProviderMode";
 import * as Axiom from "@alchemy.run/axiom";
 import * as Cloudflare from "@alchemy.run/cloudflare";
 import * as Drizzle from "@alchemy.run/drizzle";
@@ -20,11 +21,18 @@ export default Alchemy.Stack(
   "T3CodeRelay",
   {
     providers: Layer.mergeAll(
-      Axiom.providers(),
       Cloudflare.providers(),
       Drizzle.providers(),
-      Planetscale.providers(),
       PreviewTunnelSweepProvider(),
+      // Local self-host runs have no Axiom or PlanetScale account; skip those
+      // providers entirely so their credentials are never required.
+      Layer.unwrap(
+        Effect.map(defaultProviderMode, (mode) =>
+          mode === "local"
+            ? Layer.empty
+            : Layer.mergeAll(Axiom.providers(), Planetscale.providers()),
+        ),
+      ),
     ),
     state: Cloudflare.state(),
   },
