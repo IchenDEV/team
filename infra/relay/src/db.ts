@@ -9,7 +9,7 @@ import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
-import { relayDatabaseMode } from "./dbConfig.ts";
+import { relayDatabaseMode, relayDatabaseSizing } from "./dbConfig.ts";
 
 export class RelayDb extends Context.Service<
   RelayDb,
@@ -44,14 +44,15 @@ export const PlanetscaleDatabase = Effect.gen(function* () {
   });
 
   const mode = relayDatabaseMode(stage);
+  const { clusterSize, replicas } = yield* relayDatabaseSizing;
   const database =
     mode === "shared-database"
       ? yield* Planetscale.PostgresDatabase("RelayPostgresDatabase", {
           name: "t3coderelay",
           region: { slug: "us-west" },
-          clusterSize: "PS_160",
+          clusterSize,
           migrations: { dir: schema.out, table: "relay_migrations" },
-          replicas: 2,
+          replicas,
         }).pipe(RemovalPolicy.retain())
       : yield* Planetscale.PostgresDatabase.ref("RelayPostgresDatabase", {
           stage: "prod",
