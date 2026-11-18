@@ -60,7 +60,7 @@ export default Alchemy.Stack(
     });
 
     return {
-      databaseName: db.database.name,
+      databaseName: db.database?.name ?? "local-postgres",
       databaseBranchName: db.branch?.name ?? "main",
       hyperdriveName: hyperdrive.name,
       workerName: api.workerName,

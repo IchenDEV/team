@@ -567,11 +567,13 @@ export const layer = Api.make(
         Layer.provideMerge(
           Layer.unwrap(
             Effect.map(RelayObservability, (observability) =>
-              Axiom.Telemetry({
-                serviceName: "t3code-relay",
-                token: observability.workerIngestToken,
-                traces: observability.traces,
-              }),
+              observability.axiomEnabled
+                ? Axiom.Telemetry({
+                    serviceName: "t3code-relay",
+                    token: observability.workerIngestToken,
+                    traces: observability.traces,
+                  })
+                : Layer.empty,
             ),
           ),
         ),

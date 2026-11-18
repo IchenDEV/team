@@ -4,6 +4,7 @@ import * as NodeCrypto from "node:crypto";
 import * as Alchemy from "alchemy";
 import * as Axiom from "@alchemy.run/axiom";
 import * as Cloudflare from "@alchemy.run/cloudflare";
+import * as Config from "effect/Config";
 import * as Output from "alchemy/Output";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
@@ -30,6 +31,36 @@ const relayRecentSpansQuery = (dataset: string) =>
 
 export const RelayObservability = Effect.gen(function* () {
   const { stage } = yield* Alchemy.Stack;
+  const axiomEnabled = yield* Config.Boolean("RELAY_AXIOM_ENABLED").pipe(Config.withDefault(true));
+  const mobileSourceMaps = yield* Cloudflare.R2.Bucket("MobileSourceMapsBucket", {
+    name: mobileSourceMapsBucketName(stage),
+    // R2 refuses to delete a non-empty bucket, which would half tear down every non-prod stage.
+    forceDestroy: stage !== "prod",
+  });
+  if (!axiomEnabled) {
+    // Self-hosted deployments without an Axiom account: empty outputs disable
+    // trace export and client tracing; mobile telemetry forwarding has no
+    // destinations and stays inactive.
+    const empty = Output.literal("");
+    const emptyToken = { token: Output.literal(Redacted.make("")) };
+    const emptyDataset = {
+      name: empty,
+      otelTracesEndpoint: empty,
+      otelLogsEndpoint: empty,
+      otelMetricsEndpoint: empty,
+    };
+    return {
+      axiomEnabled: false as const,
+      traces: emptyDataset,
+      workerIngestToken: emptyToken,
+      mobileIngestToken: emptyToken,
+      clientIngestToken: emptyToken,
+      mobileLogs: emptyDataset,
+      mobileMetrics: emptyDataset,
+      mobileTelemetryIngestToken: emptyToken,
+      mobileSourceMaps,
+    };
+  }
   const traces = yield* Axiom.Dataset("RelayTracesDataset", {
     name: relayResourceNameForStage("t3-code-relay-traces", stage),
     kind: "otel:traces:v1",
@@ -87,12 +118,6 @@ export const RelayObservability = Effect.gen(function* () {
     ),
   });
 
-  const mobileSourceMaps = yield* Cloudflare.R2.Bucket("MobileSourceMapsBucket", {
-    name: mobileSourceMapsBucketName(stage),
-    // R2 refuses to delete a non-empty bucket, which would half tear down every non-prod stage.
-    forceDestroy: stage !== "prod",
-  });
-
   yield* Axiom.View("RelayRecentSpansView", {
     name: relayResourceNameForStage("t3-code-relay-recent-spans", stage),
     description: "Recent relay HTTP request spans.",
@@ -104,6 +129,7 @@ export const RelayObservability = Effect.gen(function* () {
   yield* MobileMonitoring(mobileLogs, traces);
 
   return {
+    axiomEnabled: true as const,
     traces,
     workerIngestToken,
     mobileIngestToken,

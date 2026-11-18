@@ -3,13 +3,14 @@ import * as Cloudflare from "@alchemy.run/cloudflare";
 import * as Drizzle from "@alchemy.run/drizzle";
 import * as Planetscale from "@alchemy.run/planetscale";
 import * as Alchemy from "alchemy";
+import { defaultProviderMode } from "alchemy/ProviderMode";
 import * as RemovalPolicy from "alchemy/RemovalPolicy";
 import type { EffectPgDatabase } from "drizzle-orm/effect-postgres";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
-import { relayDatabaseMode, relayDatabaseSizing } from "./dbConfig.ts";
+import { relayDatabaseMode, relayDatabaseSizing, relayDevDatabaseOrigin } from "./dbConfig.ts";
 
 export class RelayDb extends Context.Service<
   RelayDb,
@@ -37,11 +38,19 @@ export class RelayTransactions extends Context.Service<
 
 export const PlanetscaleDatabase = Effect.gen(function* () {
   const { stage } = yield* Alchemy.Stack;
+  const providerMode = yield* defaultProviderMode;
   const schema = yield* Drizzle.Schema("RelaySchema", {
     schema: "./src/persistence/schema.ts",
     out: "./migrations/postgres",
     dialect: "postgres",
   });
+
+  if (providerMode === "local") {
+    // Self-hosted `alchemy dev`: a local Postgres through the Hyperdrive dev
+    // origin; no PlanetScale resources. Migrations are applied out of band.
+    const origin = yield* relayDevDatabaseOrigin;
+    return { branch: undefined, database: undefined, runtimeRole: { origin }, schema };
+  }
 
   const mode = relayDatabaseMode(stage);
   const { clusterSize, replicas } = yield* relayDatabaseSizing;
@@ -71,13 +80,16 @@ export const PlanetscaleDatabase = Effect.gen(function* () {
     inheritedRoles: ["pg_read_all_data", "pg_write_all_data"],
   });
 
-  return { branch, database, runtimeRole };
+  return { branch, database, runtimeRole, schema };
 });
 
 export const RelayHyperdrive = Effect.gen(function* () {
+  const providerMode = yield* defaultProviderMode;
   const { runtimeRole } = yield* PlanetscaleDatabase;
+  const dev = providerMode === "local" ? yield* relayDevDatabaseOrigin : undefined;
   return yield* Cloudflare.Hyperdrive.Connection("RelayHyperdrive", {
     origin: runtimeRole.origin,
+    ...(dev ? { dev } : {}),
     caching: {
       disabled: true,
     },
