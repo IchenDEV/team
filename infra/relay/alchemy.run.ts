@@ -1,6 +1,8 @@
 // @effect-diagnostics anyUnknownInErrorContext:off layerMergeAllWithDependencies:off - Alchemy provider helpers expose framework-owned any requirements.
 import * as Alchemy from "alchemy";
 import * as Output from "alchemy/Output";
+import { defaultProviderMode } from "alchemy/ProviderMode";
+import { localState } from "alchemy/State/LocalState";
 import * as Axiom from "@alchemy.run/axiom";
 import * as Cloudflare from "@alchemy.run/cloudflare";
 import * as Drizzle from "@alchemy.run/drizzle";
@@ -20,13 +22,26 @@ export default Alchemy.Stack(
   "T3CodeRelay",
   {
     providers: Layer.mergeAll(
-      Axiom.providers(),
       Cloudflare.providers(),
       Drizzle.providers(),
-      Planetscale.providers(),
       PreviewTunnelSweepProvider(),
+      // Local self-host runs have no Axiom or PlanetScale account; skip those
+      // providers entirely so their credentials are never required.
+      Layer.unwrap(
+        Effect.map(defaultProviderMode, (mode) =>
+          mode === "local"
+            ? Layer.empty
+            : Layer.mergeAll(Axiom.providers(), Planetscale.providers()),
+        ),
+      ),
     ),
-    state: Cloudflare.state(),
+    // Local self-host runs keep their state on the machine instead of
+    // provisioning a Cloudflare state-store Worker in the account.
+    state: Layer.unwrap(
+      Effect.map(defaultProviderMode, (mode) =>
+        mode === "local" ? localState() : Cloudflare.state(),
+      ),
+    ),
   },
   Effect.gen(function* () {
     const { stage } = yield* Alchemy.Stack;
@@ -60,7 +75,7 @@ export default Alchemy.Stack(
     });
 
     return {
-      databaseName: db.database.name,
+      databaseName: db.database?.name ?? "local-postgres",
       databaseBranchName: db.branch?.name ?? "main",
       hyperdriveName: hyperdrive.name,
       workerName: api.workerName,
