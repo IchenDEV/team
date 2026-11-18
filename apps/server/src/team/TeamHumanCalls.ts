@@ -169,13 +169,9 @@ export const layer = (options: HumanCallRelayOptions) =>
 
       // A request is accepted once. The request file is renamed by its outcome so a
       // later tick never reads it again, while the run keeps polling its state file.
-      const settleFile = (workspaceId: string, callId: string, outcome: "accepted" | "rejected") =>
-        fs
-          .rename(
-            requestPath(options.root(workspaceId), callId),
-            `${requestPath(options.root(workspaceId), callId)}.${outcome}`,
-          )
-          .pipe(Effect.ignore);
+      // A request file is consumed whatever its outcome, so a tick never reads it twice.
+      const settleFile = (workspaceId: string, callId: string) =>
+        fs.remove(requestPath(options.root(workspaceId), callId)).pipe(Effect.ignore);
 
       // A rejected request may only settle its own unwritten id: the calls directory is
       // run-writable, so naming a live call must never overwrite that call's state file.
@@ -185,7 +181,7 @@ export const layer = (options: HumanCallRelayOptions) =>
           Effect.flatMap((taken) =>
             taken ? Effect.void : writeState(workspaceId, { callId, state: "rejected", reason }),
           ),
-          Effect.andThen(settleFile(workspaceId, callId, "rejected")),
+          Effect.andThen(settleFile(workspaceId, callId)),
         );
 
       const accept = Effect.fn("HumanCallRelay.accept")(function* (
@@ -240,7 +236,7 @@ export const layer = (options: HumanCallRelayOptions) =>
           question: request.question,
           expiresAt,
         });
-        yield* settleFile(workspaceId, callId, "accepted");
+        yield* settleFile(workspaceId, callId);
       });
 
       const scanWorkspace = Effect.fn("HumanCallRelay.scanWorkspace")(function* (
@@ -250,8 +246,12 @@ export const layer = (options: HumanCallRelayOptions) =>
         const entries = yield* fs
           .readDirectory(dir)
           .pipe(Effect.orElseSucceed(() => [] as ReadonlyArray<string>));
-        for (const entry of entries.slice(0, MAX_ENTRIES_PER_TICK)) {
-          if (!entry.endsWith(".json") || entry.endsWith(".state.json")) continue;
+        const requests = entries.filter(
+          (entry) => entry.endsWith(".json") && !entry.endsWith(".state.json"),
+        );
+        // The bound applies after filtering, so files a run leaves behind cannot starve a
+        // later request out of every tick.
+        for (const entry of requests.slice(0, MAX_ENTRIES_PER_TICK)) {
           const callId = entry.slice(0, -".json".length);
           if (!CALL_ID_PATTERN.test(callId)) continue;
           const path = `${dir}/${entry}`;
@@ -272,7 +272,7 @@ export const layer = (options: HumanCallRelayOptions) =>
             Effect.timeoutOption("5 seconds"),
             Effect.catchCause((cause) =>
               Effect.logWarning("human_call request failed", { workspaceId, callId, cause }).pipe(
-                Effect.andThen(settleFile(workspaceId, callId, "rejected")),
+                Effect.andThen(settleFile(workspaceId, callId)),
               ),
             ),
             Effect.ignore,
