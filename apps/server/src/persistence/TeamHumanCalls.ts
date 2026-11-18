@@ -160,6 +160,11 @@ export class TeamHumanCallRepository extends Context.Service<
       since: number,
     ) => Effect.Effect<ReadonlyArray<HumanCall>, StoreError>;
     readonly due: (now: number) => Effect.Effect<ReadonlyArray<HumanCall>, StoreError>;
+    /** The row as it is now, so a slow caller never writes a stale state file. */
+    readonly latest: (
+      workspaceId: string,
+      id: string,
+    ) => Effect.Effect<HumanCall | undefined, StoreError>;
     /** Accepted reservations count against the caller's pending quota. */
     readonly countActive: (
       workspaceId: string,
@@ -426,6 +431,10 @@ const make = Effect.gen(function* () {
         );
       },
     ),
+    latest: Effect.fn("TeamHumanCallRepository.latest")(function* (workspaceId, id) {
+      const rows = yield* selectOne(workspaceId, id);
+      return rows[0];
+    }),
     due: Effect.fn("TeamHumanCallRepository.due")(function* (now) {
       return yield* sql<Record<string, unknown>>`
         SELECT ${sql.unsafe(columns)} FROM team_human_calls

@@ -588,15 +588,26 @@ export const layer = (options: HumanCallRelayOptions) =>
             yield* cancelAndDeliver(cancelled);
             continue;
           }
-          yield* writeState(workspaceId, call.runId, stateOf(call));
+          // The docker checks above take time; an answer may have landed meanwhile, so the
+          // state file is written from the row as it is now, never from the stale snapshot.
+          const current = yield* calls.latest(workspaceId, call.id).pipe(
+            Effect.orElseSucceed(() => call),
+            Effect.map((row) => row ?? call),
+          );
+          yield* writeState(workspaceId, call.runId, stateOf(current));
         }
         const settled = yield* calls
           .recentlySettled(workspaceId, now() - REDELIVERY_WINDOW_MS)
           .pipe(Effect.orElseSucceed(() => [] as ReadonlyArray<HumanCall>));
         for (const call of settled) {
           const target = statePath(channelOf(workspaceId, call.runId), call.id);
-          const present = yield* fs.exists(target).pipe(Effect.orElseSucceed(() => true));
-          if (!present) yield* writeState(workspaceId, call.runId, stateOf(call));
+          // Deliver when the run cannot see it or sees an older state: an existence check
+          // alone would keep a run polling "pending" for a call that already settled.
+          const seen = yield* fs.readFileString(target).pipe(
+            Effect.map((raw) => raw.includes(`"state":"${call.state}"`)),
+            Effect.orElseSucceed(() => false),
+          );
+          if (!seen) yield* writeState(workspaceId, call.runId, stateOf(call));
         }
       });
 
