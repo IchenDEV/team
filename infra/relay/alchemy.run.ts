@@ -2,6 +2,7 @@
 import * as Alchemy from "alchemy";
 import * as Output from "alchemy/Output";
 import { defaultProviderMode } from "alchemy/ProviderMode";
+import { localState } from "alchemy/State/LocalState";
 import * as Axiom from "@alchemy.run/axiom";
 import * as Cloudflare from "@alchemy.run/cloudflare";
 import * as Drizzle from "@alchemy.run/drizzle";
@@ -34,7 +35,13 @@ export default Alchemy.Stack(
         ),
       ),
     ),
-    state: Cloudflare.state(),
+    // Local self-host runs keep their state on the machine instead of
+    // provisioning a Cloudflare state-store Worker in the account.
+    state: Layer.unwrap(
+      Effect.map(defaultProviderMode, (mode) =>
+        mode === "local" ? localState() : Cloudflare.state(),
+      ),
+    ),
   },
   Effect.gen(function* () {
     const { stage } = yield* Alchemy.Stack;
