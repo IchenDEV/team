@@ -10,18 +10,23 @@ import {
   TeamRole,
   type AuthAccessTokenResult,
   type AuthSessionId,
+  type TeamHumanCall,
   type TeamReadInput,
   type TeamRun,
   type TeamStartInput,
 } from "@t3tools/contracts";
+import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
+import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Schedule from "effect/Schedule";
 import * as Stream from "effect/Stream";
 import * as SqlClient from "effect/sql/SqlClient";
 import * as TeamMemberships from "../persistence/TeamMemberships.ts";
+import * as TeamHumanCalls from "../persistence/TeamHumanCalls.ts";
 import * as SessionStore from "../auth/SessionStore.ts";
 import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
 import type { ManagedPolicyRefusedError } from "../policy/managedLimits.ts";
@@ -31,6 +36,7 @@ import {
   scopedRunId,
   type SandboxWorkspace,
 } from "./TeamExecutionBoundary.ts";
+import { HumanCallRelay } from "./TeamHumanCalls.ts";
 
 const isTeamError = Schema.is(TeamError);
 const Workspace = Schema.Struct({
@@ -51,7 +57,7 @@ export const TeamConfig = Schema.Struct({
   sandboxStateDir: Schema.optional(Schema.String),
 });
 export type TeamConfig = typeof TeamConfig.Type;
-export const userSubject = (id: string) => `team:user:${id}`;
+export const userSubject = TeamMemberships.userSubject;
 
 type Access = typeof TeamWorkspaceAccess.Type;
 type Role = typeof TeamRole.Type;
@@ -117,6 +123,18 @@ export class TeamControlPlane extends Context.Service<
       authorization: string | undefined,
       input: TeamReadInput,
     ) => Stream.Stream<TeamRun, TeamError>;
+    readonly humanCalls: (
+      authorization: string | undefined,
+      workspaceId: string,
+    ) => Effect.Effect<ReadonlyArray<TeamHumanCall>, TeamError>;
+    readonly answerHumanCall: (
+      authorization: string | undefined,
+      input: {
+        readonly workspaceId: string;
+        readonly callId: string;
+        readonly answer: string;
+      },
+    ) => Effect.Effect<void, TeamError>;
   }
 >()("t3/team/TeamControlPlane") {}
 
@@ -154,6 +172,30 @@ const storage = <A>(
         ),
     }),
   );
+/** Call storage failures become the gateway's own error rules, never a silent empty list. */
+const callStorage = <A>(
+  effect: Effect.Effect<A, TeamHumanCalls.StoreError>,
+): Effect.Effect<A, TeamError> =>
+  effect.pipe(
+    Effect.catchIf(TeamHumanCalls.isHumanCallRejected, (error) =>
+      Effect.fail(
+        new TeamError({
+          rule: error.rule === "not_found" ? "human_call_not_found" : "human_call_not_pending",
+        }),
+      ),
+    ),
+    Effect.catchTags({
+      PersistenceSqlError: (cause) =>
+        Effect.logError("Team human call storage failed", { cause }).pipe(
+          Effect.andThen(Effect.fail(new TeamError({ rule: "storage_failure" }))),
+        ),
+      PersistenceDecodeError: (cause) =>
+        Effect.logError("Team human call storage decode failed", { cause }).pipe(
+          Effect.andThen(Effect.fail(new TeamError({ rule: "storage_failure" }))),
+        ),
+    }),
+  );
+
 const authFailure = (
   cause:
     | EnvironmentAuth.ServerAuthCredentialError
@@ -180,6 +222,8 @@ export const layer = (config: TeamConfig) =>
       const auth = yield* EnvironmentAuth.EnvironmentAuth;
       const sql = yield* SqlClient.SqlClient;
       const boundary = yield* TeamExecutionBoundary;
+      const humanCalls = yield* TeamHumanCalls.TeamHumanCallRepository;
+      const callRelay = yield* HumanCallRelay;
       const verificationFailure = (cause: SessionStore.SessionCredentialError) =>
         SessionStore.isSessionCredentialInvalidError(cause)
           ? Effect.fail(new TeamError({ rule: "authentication_required" }))
@@ -325,6 +369,8 @@ export const layer = (config: TeamConfig) =>
             // deletion then fails the workspace stays denied rather than live.
             yield* boundary.dropWorkspace(workspaceId).pipe(Effect.catchTags(sandboxErrors));
             yield* storage(members.deleteWorkspace(session.subject, workspaceId));
+            // Calls addressed inside a revoked workspace have no one to answer them.
+            yield* callRelay.cancelWorkspace(workspaceId, "workspace deleted");
           },
         ),
         members: Effect.fn("TeamControlPlane.members")(function* (authorization, workspaceId) {
@@ -376,6 +422,8 @@ export const layer = (config: TeamConfig) =>
           function* (authorization, workspaceId, userId) {
             const { session } = yield* owner(authorization, workspaceId);
             yield* storage(members.removeMember(session.subject, workspaceId, userId));
+            // A removed member can neither answer nor be waiting on a call.
+            yield* callRelay.cancelMember(workspaceId, userId);
             const subject = userSubject(userId);
             const remaining = yield* storage(members.listWorkspaces(subject));
             // The environment session reads this environment's projects without a
@@ -405,6 +453,62 @@ export const layer = (config: TeamConfig) =>
           return yield* readRun(workspace, id);
         }),
         read,
+        humanCalls: Effect.fn("TeamControlPlane.humanCalls")(
+          function* (authorization, workspaceId) {
+            const { access } = yield* authorize(authorization, workspaceId);
+            const pending = yield* callStorage(
+              humanCalls.pendingForCallee(workspaceId, access.userId),
+            );
+            return pending.map((call): TeamHumanCall => ({
+              id: call.id,
+              workspaceId: call.workspaceId,
+              runId: call.runId,
+              caller: { userId: call.callerUserId, name: call.callerName },
+              question: call.question,
+              options: [...call.options],
+              contextLink: call.contextLink,
+              raisedAt: DateTime.makeUnsafe(call.raisedAt),
+              expiresAt: call.expiresAt === null ? null : DateTime.makeUnsafe(call.expiresAt),
+            }));
+          },
+        ),
+        answerHumanCall: Effect.fn("TeamControlPlane.answerHumanCall")(
+          function* (authorization, input) {
+            const { access } = yield* authorize(authorization, input.workspaceId);
+            const now = yield* Clock.currentTimeMillis;
+            // A deadline that passed between relay ticks still ends the call first.
+            const mine = yield* callStorage(
+              humanCalls.pendingForCallee(input.workspaceId, access.userId),
+            );
+            const target = mine.find((call) => call.id === input.callId);
+            if (target !== undefined && target.expiresAt !== null && target.expiresAt <= now) {
+              const expired = yield* callStorage(
+                humanCalls.settle({
+                  workspaceId: input.workspaceId,
+                  id: input.callId,
+                  state: "expired",
+                  at: now,
+                  detail: "timeout reached with no answer",
+                  ...(target.onTimeout === "default_answer" && target.defaultAnswer !== null
+                    ? { defaultAnswer: target.defaultAnswer }
+                    : {}),
+                }),
+              ).pipe(Effect.option);
+              if (Option.isSome(expired)) yield* callRelay.deliver(expired.value);
+              return yield* new TeamError({ rule: "human_call_not_pending" });
+            }
+            const settled = yield* callStorage(
+              humanCalls.answer({
+                workspaceId: input.workspaceId,
+                id: input.callId,
+                calleeUserId: access.userId,
+                answer: input.answer,
+                at: now,
+              }),
+            );
+            yield* callRelay.deliver(settled);
+          },
+        ),
         stream: (authorization, input) =>
           Stream.unwrap(
             Effect.gen(function* () {
@@ -461,6 +565,10 @@ export const handlers = TeamRpcGroup.toLayer(
         team.removeMember(headers.authorization, input.workspaceId, input.userId),
       "team.start": (input, { headers }) => team.start(headers.authorization, input),
       "team.read": (input, { headers }) => team.read(headers.authorization, input),
+      "team.humanCalls": (input, { headers }) =>
+        team.humanCalls(headers.authorization, input.workspaceId),
+      "team.answerHumanCall": (input, { headers }) =>
+        team.answerHumanCall(headers.authorization, input),
       "team.stream": (input, { headers }) => team.stream(headers.authorization, input),
     };
   }),

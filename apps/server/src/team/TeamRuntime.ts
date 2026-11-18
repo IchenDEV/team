@@ -5,14 +5,27 @@ import * as TeamControlPlane from "./TeamControlPlane.ts";
 import { layer as boundaryLayer } from "./TeamExecutionBoundary.ts";
 import { layer as dockerSandboxLayer } from "./DockerSandbox.ts";
 import { layer as processRunnerLayer } from "../processRunner.ts";
+import * as TeamHumanCalls from "./TeamHumanCalls.ts";
+import * as TeamHumanCallPersistence from "../persistence/TeamHumanCalls.ts";
 import * as TeamMemberships from "../persistence/TeamMemberships.ts";
 import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
+
+// The relay is what turns a run's call files into rows and back, so it lives with
+// the gateway that owns memberships and the workspace roots.
+const humanCallLayer = (config: TeamControlPlane.TeamConfig) => {
+  const stateDir = config.sandboxStateDir ?? "";
+  return TeamHumanCalls.layer({
+    stateDir,
+    workspaceIds: config.workspaces.map((workspace) => workspace.id),
+  }).pipe(Layer.provideMerge(TeamHumanCallPersistence.layer));
+};
 
 // The environment server already provides EnvironmentAuth, so mounting the control
 // plane there uses this layer: a second EnvironmentAuth instance would keep its own
 // session invalidation events.
 export const layerOnEnvironment = (config: TeamControlPlane.TeamConfig) =>
-  TeamControlPlane.layer(config).pipe(
+  Layer.mergeAll(TeamControlPlane.layer(config), TeamHumanCalls.tickLoop).pipe(
+    Layer.provideMerge(humanCallLayer(config)),
     Layer.provideMerge(
       boundaryLayer({ stateDir: config.sandboxStateDir ?? "" }).pipe(
         Layer.provideMerge(dockerSandboxLayer({}).pipe(Layer.provideMerge(processRunnerLayer))),
