@@ -35,7 +35,12 @@ read-write for artifacts but carries no call files.
 3. **Deliver the question.** Write to `/channel/outbox/<inputFile>`:
 
    ```json
-   { "token": "<token>", "question": "Which branch?", "options": ["main", "release/2.4"], "contextLink": "…" }
+   {
+     "token": "<token>",
+     "question": "Which branch?",
+     "options": ["main", "release/2.4"],
+     "contextLink": "…"
+   }
    ```
 
    A valid payload consumes the token and turns the call `pending` for the callee.
