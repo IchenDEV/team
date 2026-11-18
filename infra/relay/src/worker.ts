@@ -555,8 +555,33 @@ export const layer = Api.make(
         Layer.provideMerge(Cloudflare.Workers.CronEventSourceLive),
         Layer.provideMerge(Cloudflare.Queues.WriteQueueBinding),
         Layer.provideMerge(Cloudflare.Queues.EventSourceLive),
-        Layer.provideMerge(Cloudflare.Tunnel.ReadWriteTunnelBinding),
-        Layer.provideMerge(Cloudflare.DNS.ReadWriteDnsHttp),
+        // Local self-host (`alchemy dev`): tunnel/DNS go over the HTTP API with
+        // the ambient credentials instead of minted account API tokens.
+        Layer.provideMerge(
+          Layer.unwrap(
+            Effect.map(
+              Config.Boolean("RELAY_LOCAL_BINDINGS").pipe(Config.withDefault(false)),
+              (local) =>
+                local
+                  ? Cloudflare.Tunnel.ReadWriteTunnelLocal
+                  : Cloudflare.Tunnel.ReadWriteTunnelBinding,
+            ),
+          ),
+        ),
+        Layer.provideMerge(
+          Layer.unwrap(
+            Effect.map(
+              Config.Boolean("RELAY_LOCAL_BINDINGS").pipe(Config.withDefault(false)),
+              // The Local layer captures ambient Credentials/HttpClient (present
+              // in stack-eval and the dev runtime); erase the requirement union.
+              (local) =>
+                // @effect-diagnostics-next-line unsafeEffectTypeAssertion:off -- the flag selects the layer whose ambient requirements the current runtime provides.
+                (local
+                  ? Cloudflare.DNS.ReadWriteDnsLocal
+                  : Cloudflare.DNS.ReadWriteDnsHttp) as Layer.Layer<Cloudflare.DNS.ReadWriteDns>,
+            ),
+          ),
+        ),
         Layer.provideMerge(Cloudflare.Workers.RateLimitBinding),
         Layer.provideMerge(Cloudflare.R2.ReadBucketBinding),
         Layer.provideMerge(HookInboxObject.layer),

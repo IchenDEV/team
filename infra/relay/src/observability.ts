@@ -149,6 +149,14 @@ const mobileSourceMapsBucketName = (stage: string) =>
  * R2's S3 access key id is the API token's id and the secret the SHA-256 of its value.
  */
 export const MobileSourceMapsUploadCredentials = Effect.gen(function* () {
+  const localBindings = yield* Config.Boolean("RELAY_LOCAL_BINDINGS").pipe(
+    Config.withDefault(false),
+  );
+  if (localBindings) {
+    // Local self-host: no upload token is minted; mobile source map upload is
+    // inactive (mobile push is out of scope for these deployments).
+    return Output.literal(Redacted.make(""));
+  }
   const { stage } = yield* Alchemy.Stack;
   const { accountId } = yield* yield* Cloudflare.CloudflareEnvironment;
   const bucketName = mobileSourceMapsBucketName(stage);
