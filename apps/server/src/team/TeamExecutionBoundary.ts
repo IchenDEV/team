@@ -38,9 +38,16 @@ const dockerName = (runId: string) => `t3ex-${runId}`;
 export const scopedRunId = (workspaceId: string, runId: string) =>
   RUN_ID_PATTERN.test(runId) && runId.startsWith(`team.${workspaceId}.`);
 
-/** The one place the boundary-owned workspace root is derived; the call relay reads it too. */
-export const workspaceRoot = (stateDir: string, workspaceId: string) =>
+/** The one place the boundary-owned workspace root is derived. */
+const workspaceRoot = (stateDir: string, workspaceId: string) =>
   `${stateDir}/workspaces/${workspaceId}/root`;
+
+/**
+ * The gateway-owned channel of one run: only that run's container mounts it
+ * (outbox rw, inbox ro), so no peer run can read or write another run's calls.
+ */
+export const channelDir = (stateDir: string, workspaceId: string, runId: string) =>
+  `${stateDir}/workspaces/${workspaceId}/channels/${runId}`;
 
 export class TeamExecutionBoundary extends Context.Service<
   TeamExecutionBoundary,
@@ -125,7 +132,20 @@ const make = Effect.fn("TeamExecutionBoundary.make")(function* (options: {
       yield* requireLive(workspace);
       const spec = yield* requireSpec(workspace);
       yield* sandbox.ensureWorkspace(spec, workspace.credentials);
-      yield* sandbox.startRun(spec, dockerName(runId), text);
+      // The human-call channel is prepared before the run starts, so the run's
+      // first intent already has a private outbox and a gateway-owned inbox.
+      const channel = channelDir(options.stateDir, workspace.id, runId);
+      yield* fs.makeDirectory(`${channel}/outbox`, { recursive: true }).pipe(
+        Effect.andThen(fs.makeDirectory(`${channel}/inbox`, { recursive: true })),
+        Effect.mapError(
+          (cause) =>
+            new SandboxUnavailable({
+              operation: "run.start",
+              detail: `cannot prepare channel for ${runId}: ${String(cause)}`,
+            }),
+        ),
+      );
+      yield* sandbox.startRun(spec, dockerName(runId), text, { dir: channel, runId });
     }),
 
     read: Effect.fn("TeamExecutionBoundary.read")(function* (workspace, runId) {

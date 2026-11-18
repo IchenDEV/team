@@ -10,10 +10,12 @@ export default Effect.gen(function* () {
       run_id TEXT NOT NULL CHECK(length(run_id) BETWEEN 1 AND 256),
       caller_user_id TEXT NOT NULL REFERENCES team_users(id),
       callee_user_id TEXT NOT NULL REFERENCES team_users(id),
-      question TEXT NOT NULL CHECK(length(question) BETWEEN 1 AND 2000),
+      question TEXT NOT NULL CHECK(length(question) BETWEEN 0 AND 2000),
       options TEXT NOT NULL CHECK(json_valid(options) AND json_type(options) = 'array'),
       context_link TEXT CHECK(context_link IS NULL OR length(context_link) BETWEEN 1 AND 2048),
-      state TEXT NOT NULL CHECK(state IN ('pending', 'answered', 'expired', 'cancelled')),
+      state TEXT NOT NULL CHECK(state IN ('accepted', 'pending', 'answered', 'expired', 'cancelled')),
+      -- The one-time input token exists only while the call waits for its input file.
+      token TEXT CHECK((state = 'accepted') = (token IS NOT NULL)),
       on_timeout TEXT NOT NULL CHECK(on_timeout IN ('expire', 'default_answer', 'keep_waiting')),
       default_answer TEXT CHECK(default_answer IS NULL OR length(default_answer) BETWEEN 1 AND 4000),
       expires_at INTEGER,
@@ -21,7 +23,10 @@ export default Effect.gen(function* () {
       settled_at INTEGER,
       answer TEXT CHECK(answer IS NULL OR length(answer) BETWEEN 1 AND 4000),
       answered_by TEXT REFERENCES team_users(id),
-      CHECK(caller_user_id <> callee_user_id)
+      CHECK(caller_user_id <> callee_user_id),
+      -- Only a reservation (or its cancellation) may lack a question; a call that
+      -- reached the callee always carries one.
+      CHECK(state IN ('accepted', 'cancelled') OR length(question) BETWEEN 1 AND 2000)
     )
   `;
   yield* sql`
@@ -37,7 +42,7 @@ export default Effect.gen(function* () {
     CREATE TABLE team_human_call_events (
       call_id TEXT NOT NULL REFERENCES team_human_calls(id) ON DELETE CASCADE,
       ordinal INTEGER NOT NULL,
-      state TEXT NOT NULL CHECK(state IN ('pending', 'answered', 'expired', 'cancelled')),
+      state TEXT NOT NULL CHECK(state IN ('accepted', 'pending', 'answered', 'expired', 'cancelled')),
       at INTEGER NOT NULL,
       detail TEXT,
       PRIMARY KEY(call_id, ordinal)

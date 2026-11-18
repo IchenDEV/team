@@ -63,6 +63,8 @@ export class DockerSandbox extends Context.Service<
       workspace: SandboxWorkspaceSpec,
       runName: string,
       text: string,
+      /** The run's private human-call channel; mounted outbox rw and inbox ro. */
+      channel?: { readonly dir: string; readonly runId: string },
     ) => Effect.Effect<void, SandboxError>;
     readonly readRun: (runName: string) => Effect.Effect<SandboxRunInfo, SandboxError>;
     readonly waitRun: (runName: string) => Effect.Effect<SandboxRunInfo, SandboxError>;
@@ -201,7 +203,7 @@ const make = Effect.fn("DockerSandbox.make")(function* (options: {
       );
     }),
 
-    startRun: Effect.fn("DockerSandbox.startRun")(function* (workspace, runName, text) {
+    startRun: Effect.fn("DockerSandbox.startRun")(function* (workspace, runName, text, channel) {
       yield* requireAvailable("run.start");
       // Runs execute as the host uid, not container root: the mounted root is
       // owned by that uid and --cap-drop ALL removes CAP_DAC_OVERRIDE, so a
@@ -239,6 +241,18 @@ const make = Effect.fn("DockerSandbox.make")(function* (options: {
           `T3_TEAM_WORKSPACE=${workspace.id}`,
           "--volume",
           `${workspace.root}:/workspace:rw`,
+          // Only this run mounts its channel: peers can neither read its inbox
+          // nor write its outbox, and the gateway state dir stays unmounted.
+          ...(channel === undefined
+            ? []
+            : [
+                "--volume",
+                `${channel.dir}/outbox:/channel/outbox:rw`,
+                "--volume",
+                `${channel.dir}/inbox:/channel/inbox:ro`,
+                "--env",
+                `T3_TEAM_RUN_ID=${channel.runId}`,
+              ]),
           "--workdir",
           "/workspace",
           "--read-only",

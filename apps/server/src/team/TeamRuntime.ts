@@ -2,7 +2,7 @@ import { TeamRpcGroup } from "@t3tools/contracts";
 import { RpcServer, RpcSerialization } from "effect/rpc";
 import * as Layer from "effect/Layer";
 import * as TeamControlPlane from "./TeamControlPlane.ts";
-import { layer as boundaryLayer, workspaceRoot } from "./TeamExecutionBoundary.ts";
+import { layer as boundaryLayer } from "./TeamExecutionBoundary.ts";
 import { layer as dockerSandboxLayer } from "./DockerSandbox.ts";
 import { layer as processRunnerLayer } from "../processRunner.ts";
 import * as TeamHumanCalls from "./TeamHumanCalls.ts";
@@ -15,7 +15,7 @@ import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
 const humanCallLayer = (config: TeamControlPlane.TeamConfig) => {
   const stateDir = config.sandboxStateDir ?? "";
   return TeamHumanCalls.layer({
-    root: (workspaceId) => workspaceRoot(stateDir, workspaceId),
+    stateDir,
     workspaceIds: config.workspaces.map((workspace) => workspace.id),
   }).pipe(Layer.provideMerge(TeamHumanCallPersistence.layer));
 };
