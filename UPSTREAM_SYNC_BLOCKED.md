@@ -1,0 +1,932 @@
+# Upstream integration blocked
+
+Base: `ed88b67293dab41ecdd4c1bc7d2dfb69d484b619`
+
+Upstream: `c66881ff2b69a9be002bcb15407f3cb09430548b`
+
+Resolve conflicts or license changes manually. This candidate keeps the fork tree unchanged.
+
+```text
+366ffcd8f1346f82d6108ad0bf863e4a5154daaf
+100644 fd9ba6b60302bd5271b1f587824c605238044fc1 1	.github/workflows/issue-labels.yml
+100644 fe48a8f899f8f885e5b8ff33263d4eb294afe59a 2	.github/workflows/issue-labels.yml
+100644 97ddab983015dde8e0f9df8ab2cd5460c9317d57 3	.github/workflows/issue-labels.yml
+100644 d65882593c64947a54f2fadc6ad2c365024566a7 1	.github/workflows/issue-vouch.yml
+100644 4a77a920b143725490e1fc7d39f862c6d458a8ed 2	.github/workflows/issue-vouch.yml
+100644 8a14d4cc41bba726d99842a77b2bb7fe684cef3e 3	.github/workflows/issue-vouch.yml
+100644 890bd0c2aecd92bab08438fb2232f05133dd4482 1	.github/workflows/mobile-eas-preview-fork.yml
+100644 d0b74a11b325d0187700b0b44297b8933f7bbefe 2	.github/workflows/mobile-eas-preview-fork.yml
+100644 a32d2bd98fbf49bfbef9444a38e47e80ab272c1b 3	.github/workflows/mobile-eas-preview-fork.yml
+100644 53061f25e9c4894c8a7b1c83588ce4c821bd5611 1	.github/workflows/mobile-eas-preview.yml
+100644 556c42cbd87fa6c3ec085fe847b3f18f79855f4c 2	.github/workflows/mobile-eas-preview.yml
+100644 501c333f0092e6a8f8db5467fa04ea32f0709db5 3	.github/workflows/mobile-eas-preview.yml
+100644 fe4d7456acdf4e0ceb9bfe10a3fcfc5cccbd6084 1	.github/workflows/mobile-eas-production.yml
+100644 d364ab5ba57cef0eec7ddf5cebc3d102aaf9faa1 2	.github/workflows/mobile-eas-production.yml
+100644 249150ff0951ba8d3c8ca1c4d655f9defd8f25cb 3	.github/workflows/mobile-eas-production.yml
+100644 437f16c4684bed43e97479b8922ff61c00265296 1	.github/workflows/mobile-fingerprint-check.yml
+100644 eb76d050478aa8ca256660c9f9f9cecfb95a2630 2	.github/workflows/mobile-fingerprint-check.yml
+100644 835cac552cc412d270b0be481a0276393630feb2 3	.github/workflows/mobile-fingerprint-check.yml
+100644 d6a2864f94a9b7f7b06edd430ce8d144602a663b 1	.github/workflows/pr-limits.yml
+100644 17b5af47c5bc67b224d0eefb11a079115e4ab835 2	.github/workflows/pr-limits.yml
+100644 3a0fbe591a93f487719fe18356454d554fbf16bf 3	.github/workflows/pr-limits.yml
+100644 eb53c07894025b0e0b5c713064f3853d3614d297 1	.github/workflows/pr-vouch.yml
+100644 4d2cab4f75ecfac8e96874ceb074afe17ddfe362 2	.github/workflows/pr-vouch.yml
+100644 c8b067e7637dd1323a9ebcd43ec717fc18f749aa 3	.github/workflows/pr-vouch.yml
+100644 94987b447745b6545383fc25abbcbdc8f493e6ee 1	.github/workflows/thread-transfer-report.yml
+100644 aaac0c34cf5d47bd00a36786d93c8f8fa76baa41 2	.github/workflows/thread-transfer-report.yml
+100644 69056d56354034f50fe330b1ee6f9996718f9599 3	.github/workflows/thread-transfer-report.yml
+100644 24dc0f8f7f6669ee439bc13f496e0451239f0e31 1	README.md
+100644 f063bd5462a57f52f84a05b94bb48da1797e39ce 2	README.md
+100644 b3ad8bae49b70ae2043b2e274ac8b8b7923e02b8 3	README.md
+100644 56fe979cf8c6729bf62822d86e825b44af370665 1	apps/desktop/src/app/DesktopApp.ts
+100644 6a3f4035c2be3184d27abe1e8c53e1b26888d79c 2	apps/desktop/src/app/DesktopApp.ts
+100644 e5d95fbaee295f7597cc3947a73feee65dc564df 3	apps/desktop/src/app/DesktopApp.ts
+100644 769a30cf7680bc0a3594fa3e5231e2b7a30379b9 1	apps/desktop/src/app/DesktopStartupRecovery.ts
+100644 b8ea4fc8440598ee8b9829df7bebc8d0f96d2ecb 2	apps/desktop/src/app/DesktopStartupRecovery.ts
+100644 768fe2ee3d8d38bf9c1e21cfb850cccfe9e11825 3	apps/desktop/src/app/DesktopStartupRecovery.ts
+100644 62c811996b1a04d4a13c97c21cfdccb6c2a2a17e 1	apps/desktop/src/backend/DesktopBackendPool.ts
+100644 e751d04d491b04c6329734a86f87d82cb12175b2 2	apps/desktop/src/backend/DesktopBackendPool.ts
+100644 4df80d8f7970e9f1b42def43c5557bf9cbdcd288 3	apps/desktop/src/backend/DesktopBackendPool.ts
+100644 9313591eb7b9db76ea3273c179c9075e3896c545 1	apps/desktop/src/backend/DesktopHomeOwner.ts
+100644 e36d297966ed25a8c0de43c60eafa226493435f7 2	apps/desktop/src/backend/DesktopHomeOwner.ts
+100644 7fc833a3fc104c258ad0a5183b91677a842316b3 3	apps/desktop/src/backend/DesktopHomeOwner.ts
+100644 89aa3cd2a678c7d551b7c238b75979069292a758 1	apps/desktop/src/backend/DesktopLocalEnvironmentAuth.ts
+100644 40179f89034991bcd2f17d77e15640f1fc46f091 2	apps/desktop/src/backend/DesktopLocalEnvironmentAuth.ts
+100644 25187f451f830169403f60033cd5739d0b1c1f62 3	apps/desktop/src/backend/DesktopLocalEnvironmentAuth.ts
+100644 0b50e147785f739027c3ba258ddfcf482c1dfabe 1	apps/desktop/src/permissions/MacPermissionHelper.ts
+100644 950380ecaac2b0aefffdac74b8bac31b07bad9f5 2	apps/desktop/src/permissions/MacPermissionHelper.ts
+100644 cad9c5590609b20172cd74e28ef2dff1738a5aa5 3	apps/desktop/src/permissions/MacPermissionHelper.ts
+100644 1400f2c9cbe098964c5d85cd3db2f44457a70032 1	apps/desktop/src/preview/BrowserSession.ts
+100644 37b03533eade1df360a4aafb9c03cfabed35666e 2	apps/desktop/src/preview/BrowserSession.ts
+100644 1ecea4218196fe1da91e3b0a17ed4e9afa54c699 3	apps/desktop/src/preview/BrowserSession.ts
+100644 b4025ebfde8ef007a4e81ab691b70ff66e5f75a7 1	apps/desktop/src/window/DesktopApplicationMenu.ts
+100644 19e5be89d05147d1ca0b787213b8f668ae8c3c44 2	apps/desktop/src/window/DesktopApplicationMenu.ts
+100644 6c9cb3fe02bf08624cab33c4ef0dbbb984705bf4 3	apps/desktop/src/window/DesktopApplicationMenu.ts
+100644 97fe5cf977accddf63c60eca5f4dd4165d744f57 1	apps/mobile/app.config.ts
+100644 fbdabb203d5f4f27e051782822dea26246a039e4 2	apps/mobile/app.config.ts
+100644 2a9fcfe5d7be8b6c96f09262ab9403d2ff23dee4 3	apps/mobile/app.config.ts
+100644 69d9ae623b27b6a83cf3b5991b60b42ba57cd4ab 1	apps/mobile/modules/t3-composer-editor/android/src/main/java/expo/modules/t3composereditor/T3ComposerEditorModule.kt
+100644 d4868afe099f33d857f0e2dbab772956f666dcd0 2	apps/mobile/modules/t3-composer-editor/android/src/main/java/expo/modules/t3composereditor/T3ComposerEditorModule.kt
+100644 b0094acd75e9a3c285d600d6d5ccfb7774f994d0 3	apps/mobile/modules/t3-composer-editor/android/src/main/java/expo/modules/t3composereditor/T3ComposerEditorModule.kt
+100644 f49938fff8601df6697021590d090f64ba005b2c 1	apps/mobile/scripts/measure-renders.mts
+100644 2077c098aa21517f82cd8b831706100435600db9 2	apps/mobile/scripts/measure-renders.mts
+100644 222e536cf4b5c733766227396b6aaff8dec2ea60 1	apps/mobile/src/components/CompactBrandTitle.tsx
+100644 025665211707851af97a8cf3e4df5db37fceccbd 2	apps/mobile/src/components/CompactBrandTitle.tsx
+100644 bf70682462bf456b5b66a95ca8107e78d22e2b03 3	apps/mobile/src/components/CompactBrandTitle.tsx
+100644 a2b972b0ccc2d53fb33e310f9214008f194b78d4 1	apps/mobile/src/features/agent-awareness/remoteRegistration.ts
+100644 93e713e3cdad8cf1d4cdd45ffc1f157617d137dc 2	apps/mobile/src/features/agent-awareness/remoteRegistration.ts
+100644 bea319f0877d3f325312d1f21f29ccd4caf7b803 3	apps/mobile/src/features/agent-awareness/remoteRegistration.ts
+100644 448fd929e42e8a4b4756a10e34e192f9354d6cd8 1	apps/mobile/src/features/diagnostics/SettingsDiagnosticsRouteScreen.tsx
+100644 5920d28fe71ff1de5830de6dfba55a4f06b56f91 2	apps/mobile/src/features/diagnostics/SettingsDiagnosticsRouteScreen.tsx
+100644 f25f036963e59e153ee04ae91af9d9d0d7f05e40 3	apps/mobile/src/features/diagnostics/SettingsDiagnosticsRouteScreen.tsx
+100644 c4982857739c32478b0d7c6e957f4a3930feec02 1	apps/mobile/src/features/diagnostics/crash-log-model.ts
+100644 1e7931ef30b79b05e2251379e4efde11be7dea53 2	apps/mobile/src/features/diagnostics/crash-log-model.ts
+100644 192986346ebfcc2209558825d22dd8407b06d01f 3	apps/mobile/src/features/diagnostics/crash-log-model.ts
+100644 05ef660af4e910d78258484f25c75f9db23956a3 1	apps/mobile/src/features/home/HomeRouteScreen.tsx
+100644 b82b66bf2a076da7207b095db7577f3c7ce54010 2	apps/mobile/src/features/home/HomeRouteScreen.tsx
+100644 2550f965087299c5f7d2e6fb74b298dc4261542b 3	apps/mobile/src/features/home/HomeRouteScreen.tsx
+100644 2db99c567f9391732539609fd333ba09259db319 1	apps/mobile/src/features/layout/workspace/WorkspaceRootScreen.tsx
+100644 737a550224122142d19ff65bf0a32baa47141364 2	apps/mobile/src/features/layout/workspace/WorkspaceRootScreen.tsx
+100644 cc489b9c72d112f7267b4ac092ad9d9f51ec8924 3	apps/mobile/src/features/layout/workspace/WorkspaceRootScreen.tsx
+100644 71e12d09e0b171d89acb4d643eb615bed70453b1 1	apps/mobile/src/features/settings/OutdatedServerUpdateSection.tsx
+100644 d5aaafd8ddd92757a352dfe59dbf0037b3744a46 2	apps/mobile/src/features/settings/OutdatedServerUpdateSection.tsx
+100644 d6bd0556d020f92fa516f4c293e86cfe65ecfb1e 3	apps/mobile/src/features/settings/OutdatedServerUpdateSection.tsx
+100644 13c9619768f4e89037602390e12b2cc25f9462c2 1	apps/mobile/src/features/settings/SettingsEnvironmentDetailRouteScreen.tsx
+100644 259dc4a255f2989fa9e8ef174d6364460a88b2ed 2	apps/mobile/src/features/settings/SettingsEnvironmentDetailRouteScreen.tsx
+100644 bd7a0a7ff86bc5f5d8a454c4c722c31aeac94ce3 3	apps/mobile/src/features/settings/SettingsEnvironmentDetailRouteScreen.tsx
+100644 db19b556625fa404efbb704d11ab2d2fef9f2261 1	apps/mobile/src/features/settings/SettingsNotificationsRouteScreen.tsx
+100644 2bea405f5e704ad2c9fb57628b9b34f11518571a 2	apps/mobile/src/features/settings/SettingsNotificationsRouteScreen.tsx
+100644 6bc53854d25f34ac66f68485009062c2564ed952 3	apps/mobile/src/features/settings/SettingsNotificationsRouteScreen.tsx
+100644 d71fbc8fd9d248dee01e042f0b66e2161a73b92c 1	apps/mobile/src/features/settings/SettingsScheduledTasksRouteScreen.tsx
+100644 c9a1aaeb39f12e77b923a7640893c3a4d9089802 2	apps/mobile/src/features/settings/SettingsScheduledTasksRouteScreen.tsx
+100644 a4d5c5e69431ce6801737a049e0ec5279470a72f 3	apps/mobile/src/features/settings/SettingsScheduledTasksRouteScreen.tsx
+100644 4b0ca00e88666b97f6aa61fa54d8fb837155a9b7 1	apps/mobile/src/features/settings/SettingsVoiceRouteScreen.tsx
+100644 b904e3052e117c3e54bd4c031f0000ba0cc31969 2	apps/mobile/src/features/settings/SettingsVoiceRouteScreen.tsx
+100644 6e18e2146dd92f15f4b59ab63564ede0d9a27fca 3	apps/mobile/src/features/settings/SettingsVoiceRouteScreen.tsx
+100644 0b2a7da5e5422fd2d1e8ac5e644b69abc3f28780 1	apps/mobile/src/features/settings/VoiceModelSection.tsx
+100644 713a7e426764baa552d3a40cc96f5ca9be3f0c7a 2	apps/mobile/src/features/settings/VoiceModelSection.tsx
+100644 ea5dd9054fc213090708b97ee287ab015583977f 3	apps/mobile/src/features/settings/VoiceModelSection.tsx
+100644 784875fd6253bf7b2c84d3813e7731e06bf472a4 1	apps/mobile/src/features/showcase/showcaseAgentActivity.ts
+100644 8f90d4bba5fc1beb4925817402f96623469b69bc 2	apps/mobile/src/features/showcase/showcaseAgentActivity.ts
+100644 0a9474971069780340a35f6366fbf4314452dd71 3	apps/mobile/src/features/showcase/showcaseAgentActivity.ts
+100644 ab2f5357aefa1a38336bf26f4e289321a59ae9d1 1	apps/mobile/src/features/threads/ThreadFeed.tsx
+100644 6e464f98dc2a873665b8fd4713bbac2641c2d09a 2	apps/mobile/src/features/threads/ThreadFeed.tsx
+100644 992ba4779f34df37bf50fa21cb72cb898e27f5ff 3	apps/mobile/src/features/threads/ThreadFeed.tsx
+100644 940cf885ece31eefa84a872543b1da2c70d6da4a 1	apps/mobile/src/features/threads/ThreadNavigationSidebar.tsx
+100644 24f707ee03cddcba3e031fb359ad2f5ac8fc1b27 2	apps/mobile/src/features/threads/ThreadNavigationSidebar.tsx
+100644 681f5d3c6fa0a7b3dd81980e357999208385ef87 3	apps/mobile/src/features/threads/ThreadNavigationSidebar.tsx
+100644 16ae5b6cf8093a95da4e28edfa2ae1ad32dea791 1	apps/mobile/src/features/threads/ThreadQueueControl.tsx
+100644 05231383052114120d1b35a972b108cddc112f89 2	apps/mobile/src/features/threads/ThreadQueueControl.tsx
+100644 41aed6dfd3d9f07f73b7bbd489ac3f3325a98a5d 3	apps/mobile/src/features/threads/ThreadQueueControl.tsx
+100644 dd27cca674888dfb843cb6b216707c992b2ddb09 1	apps/mobile/src/features/voice-input/voiceDestination.ts
+100644 0ff5d58ab25dd38578fe05ca489244e0a732cb5c 2	apps/mobile/src/features/voice-input/voiceDestination.ts
+100644 1a1c1e9396175faf5c3b466fd867306bdc0691d6 3	apps/mobile/src/features/voice-input/voiceDestination.ts
+100644 d706d00fbec4e8b912c8b2fb7620974e50480f38 1	apps/mobile/src/lib/authClientMetadata.ts
+100644 4fc95019c23d0f9557afaeb41d2285fd588bcce2 2	apps/mobile/src/lib/authClientMetadata.ts
+100644 059ac5c1e33204371f85fbbc44f5fedcd259df0e 3	apps/mobile/src/lib/authClientMetadata.ts
+100644 58f2da087ea41b772285f261c37d4ddc80ea8883 1	apps/mobile/src/state/use-thread-composer-state.ts
+100644 b7b901da32cec967ae4eb6a3eb28308f34409814 2	apps/mobile/src/state/use-thread-composer-state.ts
+100644 278b9eb67599bcae9f32364fae092e732c12d4fd 3	apps/mobile/src/state/use-thread-composer-state.ts
+100644 2d97c15b8e2d74f7ca9cc883ad2cf6cf63e5fe4b 1	apps/mobile/src/widgets/AgentActivityWidget.tsx
+100644 0366973a350edbaf5a53942d3c6a5fff87d5946c 2	apps/mobile/src/widgets/AgentActivityWidget.tsx
+100644 8dff1156da63d07ac6e42238cbbc41729b4885d6 3	apps/mobile/src/widgets/AgentActivityWidget.tsx
+100644 7a00789cc9b5a98d3c37d2f45f19090ebc58a897 1	apps/mobile/src/widgets/agentActivityWidgetTimeline.ts
+100644 ec44fe274a5f94e6bc2f0ca7a1927c06ebe60f40 2	apps/mobile/src/widgets/agentActivityWidgetTimeline.ts
+100644 177a2b7f0415ff7fbcc4a386b907ecbb4b6dbb66 3	apps/mobile/src/widgets/agentActivityWidgetTimeline.ts
+100644 bea918f40787092930023bb58222329f148c3c7f 1	apps/server/package.json
+100644 922f7133d5dde0f67712575afac8a4ef03d7cd1e 2	apps/server/package.json
+100644 f65218b7e14a9a8d5a6e30ba8492ec0720b01e33 3	apps/server/package.json
+100644 429e49b9c9941b065cd8020fe553f3cde64c54d2 1	apps/server/src/background/KeepAwake.ts
+100644 54c49f50b37efd60be3e5eaa965c9392818c2463 2	apps/server/src/background/KeepAwake.ts
+100644 72e5c1fbf031b33b1feafccb99491534dcb23f65 3	apps/server/src/background/KeepAwake.ts
+100644 ddbc49e1ced74b8ea7df497370ad8a4fd894cc61 1	apps/server/src/cli/config.test.ts
+100644 a2d4e8b8d17bd1c0135649260c5d295620c05a23 2	apps/server/src/cli/config.test.ts
+100644 48d1803879205f55766ca939df20d96efb666389 3	apps/server/src/cli/config.test.ts
+100644 a0bda99351646f8d34768d52ec79cf3a1470b7eb 1	apps/server/src/cli/doctor.ts
+100644 96f38f0ac8fb13f083af08caca0863eae3754974 2	apps/server/src/cli/doctor.ts
+100644 60af29ac41e7bdaf652e3700273e7d78da65a709 3	apps/server/src/cli/doctor.ts
+100644 303402d46c2b44a4d0b260f46f76224d8b6b0dca 1	apps/server/src/cli/server.ts
+100644 690913404a4e16b026ca0a87dfdf855534200b61 2	apps/server/src/cli/server.ts
+100644 8683e06dc03ad7d375d2f1c5c8214b080dc350b2 3	apps/server/src/cli/server.ts
+100644 fc2aa8d0889aa238b8cea764d6239b54dba78fa8 1	apps/server/src/cli/service.ts
+100644 67e1c7e5ba8285588f1080bc24acf6a54dc4bb8f 2	apps/server/src/cli/service.ts
+100644 4c55d1fa329da461fa8c1c2cbc101c122bd69a01 3	apps/server/src/cli/service.ts
+100644 c9173a3d4688901dd29f46c5efcb071e3464b424 1	apps/server/src/cli/triage.ts
+100644 0066f06b1b7e0eaea483dacb472020a89639e86f 2	apps/server/src/cli/triage.ts
+100644 e081a5f2c5427dc3d2ac1af692bac36be0b3d429 3	apps/server/src/cli/triage.ts
+100644 2074212d831722f43231c129da6ad5d28e5768ad 1	apps/server/src/cloud/relayResponse.ts
+100644 1dc98a7bb115db90534cd98bc41e42d5cd44d205 2	apps/server/src/cloud/relayResponse.ts
+100644 ac16308deb7805301ad34e2634965055cd4dc383 3	apps/server/src/cloud/relayResponse.ts
+100644 ffddcf7d5866b5301800af6be205d13ec3c6df36 1	apps/server/src/mcp/AcpMcpStdioBridge.ts
+100644 1d6cbe4bd21f715a7a5ffba479d1247d66c5d8dc 2	apps/server/src/mcp/AcpMcpStdioBridge.ts
+100644 f01008041b9c9bc45e99f18717a3ce029594ba09 3	apps/server/src/mcp/AcpMcpStdioBridge.ts
+100644 8c138e4a0ffd0c97c078ec0d6e5e631f7455082a 1	apps/server/src/orchestration-v2/Adapters/CodexAdapterV2.ts
+100644 a8906696258c23d9bb062e449c76d261cb0fa54f 2	apps/server/src/orchestration-v2/Adapters/CodexAdapterV2.ts
+100644 3bb3d8e111e41df300711a2789d59a92d4e4e1b8 3	apps/server/src/orchestration-v2/Adapters/CodexAdapterV2.ts
+100644 e8db8055ab69ad64154975d83b8fb6cc098ae5ee 1	apps/server/src/orchestration-v2/RestartContinuation.ts
+100644 520fb213d65e8a4680e279c75b2851bb8bfcd9a9 2	apps/server/src/orchestration-v2/RestartContinuation.ts
+100644 806f17c20c197edee1eba1bb7f3907bbaf8b13e8 3	apps/server/src/orchestration-v2/RestartContinuation.ts
+100644 6fddf407cf4d4e30af561ceca6346201a136ded4 1	apps/server/src/peer/PeerLinks.ts
+100644 6ae7ff6e4478c6126337c50bb4472dd1a46f7cd9 2	apps/server/src/peer/PeerLinks.ts
+100644 859266c469c70e78c5e7c77b6bd53825274e0b8f 3	apps/server/src/peer/PeerLinks.ts
+100644 04f10dd34b0b5fe156c8b2fde422ba048252632f 1	apps/server/src/persistence/AuthSessions.ts
+100644 8a337d5c8650c6b410e5a3d5d098e0eabddfbb15 2	apps/server/src/persistence/AuthSessions.ts
+100644 921f99f3bab774a012eaacf8c1d7d992177857dd 3	apps/server/src/persistence/AuthSessions.ts
+100644 e2c62dd793796085a0c924d6394fc4b317992801 1	apps/server/src/persistence/Migrations.ts
+100644 c9c7a79fbdfb416e331428a5ddae87cb2feca3c0 2	apps/server/src/persistence/Migrations.ts
+100644 5d29aa358584ec04922068f5f611de3a74c74150 3	apps/server/src/persistence/Migrations.ts
+100644 fbe47613c87e0f3599a854a7760f99b1aeb44b18 1	apps/server/src/persistence/reconcileV2PreviewMigration.test.ts
+100644 b06d42c55d51f41b7654f43e43051637fd12db10 2	apps/server/src/persistence/reconcileV2PreviewMigration.test.ts
+100644 20289dd44997d208c5a3cbe3fc161e57d8a9cc6a 3	apps/server/src/persistence/reconcileV2PreviewMigration.test.ts
+100644 413b41eb08b4b74e356a0ba04943faa9331e6792 1	apps/server/src/preview/ServerBrowserContexts.test.ts
+100644 3602176e5f01bd3e65f7c10b00d85676d4bbd043 2	apps/server/src/preview/ServerBrowserContexts.test.ts
+100644 2e438552d209f45a9887a2631523485d5a5aed90 3	apps/server/src/preview/ServerBrowserContexts.test.ts
+100644 b7c61d7a0bcfa0e2f4d695f49e4c7808b69010f3 1	apps/server/src/provider/AntigravityInstallation.ts
+100644 3716cd0a834e7c3e60e097786dd26cf206ec4836 2	apps/server/src/provider/AntigravityInstallation.ts
+100644 c7cc66413d3edd471094078d89e5f0268cabdb9e 3	apps/server/src/provider/AntigravityInstallation.ts
+100644 112c7a88d9b3b26edf4ec5ba97b7b91857346724 1	apps/server/src/speech/CloudSpeech.test.ts
+100644 d7a0e1388f72b5462c37a905aaf7daaeeb991e24 2	apps/server/src/speech/CloudSpeech.test.ts
+100644 1ada861d6d85236a55cda95f57cdeaff83991ae4 3	apps/server/src/speech/CloudSpeech.test.ts
+100644 3f580b0743b4016c7ed64f25458ca063e99a4359 1	apps/server/src/speech/SpeechService.test.ts
+100644 9513d2a4fa3b83105b29fdb6e39a9dbf9ae7b82a 2	apps/server/src/speech/SpeechService.test.ts
+100644 a4ed5455cdcae91188e385ae48f6ec871f18e006 3	apps/server/src/speech/SpeechService.test.ts
+100644 051e3090a5d48f880323cafdb75ae6e9e739e799 1	apps/web/index.html
+100644 ca1b1e21dea5b16c7e48c02dcc5ea4bd69e3ea02 2	apps/web/index.html
+100644 7f8be6fa934c7776090420a590fcf618f0b73421 3	apps/web/index.html
+100644 c474ed0fa6c8f53f3e08fea5367b0b6161c39016 1	apps/web/src/cloud/linkEnvironment.ts
+100644 0d58f6ec674065fe19529bfcd7d84efd6b1bd586 2	apps/web/src/cloud/linkEnvironment.ts
+100644 609f62c4c1f72b36c8b84f5810fa86dae94e238b 3	apps/web/src/cloud/linkEnvironment.ts
+100644 1a50e7fdfa6b39ac15214ce451089c386731623e 1	apps/web/src/components/ChatView.tsx
+100644 6396ae0e3160aee4917d893880baedb2c5ec6200 2	apps/web/src/components/ChatView.tsx
+100644 bca4f3563d60ce8306db10cd48925e892fee5bed 3	apps/web/src/components/ChatView.tsx
+100644 ff0770444ff6ac912d1ec141b17df110422f30c8 1	apps/web/src/components/CommandPalette.tsx
+100644 28ae2c40cf73e0b076c0ba7095666d62656acca8 2	apps/web/src/components/CommandPalette.tsx
+100644 b0b042f3a6cbbcb9c4dd7259fe121682a9f758c4 3	apps/web/src/components/CommandPalette.tsx
+100644 9730fc7c342c94ff4f51032b25fc03308adab670 1	apps/web/src/components/EnvironmentContextChip.tsx
+100644 6c8be0222ba618d0eaf427ca38d0a7fcecb89add 2	apps/web/src/components/EnvironmentContextChip.tsx
+100644 b10111177ec39f42de39a1be6c031b8b4727e87e 3	apps/web/src/components/EnvironmentContextChip.tsx
+100644 679d61b1f350231c54dc7987f877a0b165dc83d9 1	apps/web/src/components/GitHubStarPrompt.tsx
+100644 796c76e045e805314d0177a7f737b41b20cb2f25 2	apps/web/src/components/GitHubStarPrompt.tsx
+100644 097289d9829ced2511319968e22f5258ce63970e 3	apps/web/src/components/GitHubStarPrompt.tsx
+100644 86427ba736f17223bc539c8f59c7e806527def8a 1	apps/web/src/components/HostedEmptyState.tsx
+100644 3cf8727f08fcda9af4a676351e5d41474fdd427b 2	apps/web/src/components/HostedEmptyState.tsx
+100644 3c4f2a3024990d90af9cb51ceb82d4425ac2ca92 3	apps/web/src/components/HostedEmptyState.tsx
+100644 5e18356f4830d1a8f88fdd5a5375f22e32b77c61 1	apps/web/src/components/RightPanelTabs.tsx
+100644 d1fd1279cce7e938b0e4995257bddf05378349e4 2	apps/web/src/components/RightPanelTabs.tsx
+100644 cfc161fd4aadbcce0e886890d3377c722866233a 3	apps/web/src/components/RightPanelTabs.tsx
+100644 ef999e5bcdc31d979321b6411bdee8d092d51ac2 1	apps/web/src/components/ServerUpdateAction.tsx
+100644 2873f93c66020d59367cba56d678815a7d313b8c 2	apps/web/src/components/ServerUpdateAction.tsx
+100644 51dcf70862079382b9764c2d3a83114384ff2bd9 3	apps/web/src/components/ServerUpdateAction.tsx
+100644 9d0309143361040d18eb13de9f987371e074c361 1	apps/web/src/components/auth/ConnectAgentSurface.tsx
+100644 b0b0003b9c1a469aa5bad655f7bb5a458ffe384a 2	apps/web/src/components/auth/ConnectAgentSurface.tsx
+100644 cc7c1f6e219de5627d7c2260277eef396915f463 3	apps/web/src/components/auth/ConnectAgentSurface.tsx
+100644 49cbc8f050eea869c240701b14c86f15055334bf 1	apps/web/src/components/chat/QueuedRunsControl.tsx
+100644 6904870bec4253a663eb003ebef76b4706fabc13 2	apps/web/src/components/chat/QueuedRunsControl.tsx
+100644 c01fd90e5c22ebc51d76c17d4d5e880c888bb99c 3	apps/web/src/components/chat/QueuedRunsControl.tsx
+100644 6b8de5aca8ecc709a0f976443d208bdeb04230e8 1	apps/web/src/components/chat/RightPanelSurfaceContent.tsx
+100644 90947188f6b3e8c6644d9d206fff623a9f6753cd 2	apps/web/src/components/chat/RightPanelSurfaceContent.tsx
+100644 8b4bb6232287b0ae82986ee8ceee7a64670534e2 3	apps/web/src/components/chat/RightPanelSurfaceContent.tsx
+100644 7cd57ed18c0c1064e6b11cc1b0400bd105528ea1 1	apps/web/src/components/chat/TimelineUserMessageRow.tsx
+100644 847903a93fec794b66dad35ffaf3603e16ecdd64 2	apps/web/src/components/chat/TimelineUserMessageRow.tsx
+100644 4ec0b9e898237dcf209c2cfebcb36e7b7d7a54d8 3	apps/web/src/components/chat/TimelineUserMessageRow.tsx
+100644 c8d3d8528df3566944446fc14c6e5fd882193ad9 1	apps/web/src/components/chat/TriageDraftHero.tsx
+100644 cb87f80c407b9dd8fe27f3473293314c370366f3 2	apps/web/src/components/chat/TriageDraftHero.tsx
+100644 cd8b51a5a2d25732ecf578b242ead39e3817e57d 3	apps/web/src/components/chat/TriageDraftHero.tsx
+100644 016099805eb2ac4ad2c4ec75f3fe959133944baa 1	apps/web/src/components/clerk/MobileClientsUserProfilePage.tsx
+100644 f2be6f20a95b5d13f4ae562937574d185792ae90 2	apps/web/src/components/clerk/MobileClientsUserProfilePage.tsx
+100644 7e9cdade949a77de701eabc6838c136f7325e7ef 3	apps/web/src/components/clerk/MobileClientsUserProfilePage.tsx
+100644 cff5a659c95a409e6b40fbd72f84d9549e5a6aad 1	apps/web/src/components/cloud/RelayClientInstallDialog.tsx
+100644 75d12c1fae950644a7b50247bb3f8e22f9bfdb47 2	apps/web/src/components/cloud/RelayClientInstallDialog.tsx
+100644 26a355c802067a86aaeae44fe6822df0445827da 3	apps/web/src/components/cloud/RelayClientInstallDialog.tsx
+100644 bc97e65c7f99566b408b81142740f4044b6eddca 1	apps/web/src/components/desktop/SshPasswordPromptDialog.tsx
+100644 1435e632d885f398d51eebb5f54caed2b6690889 2	apps/web/src/components/desktop/SshPasswordPromptDialog.tsx
+100644 515fd6db63ab26e0f2769bfc8461f5cfa212cb97 3	apps/web/src/components/desktop/SshPasswordPromptDialog.tsx
+100644 b658de77e19ff0fcb5381a73adfac532d22afac9 1	apps/web/src/components/desktopUpdate.logic.ts
+100644 711cb337e9ca2bd090b7ea0aa0d8433b81e11da2 2	apps/web/src/components/desktopUpdate.logic.ts
+100644 4922ee3b524b7b9fbe42a9983a3193efb2000f3a 3	apps/web/src/components/desktopUpdate.logic.ts
+100644 93666b3d243e0cf0855fba9fbe741b88d5baa5bd 1	apps/web/src/components/mcp/UseInAnotherAppDialog.tsx
+100644 b2392f98b5dadf46c1bd71fc9cc87ee738427bbc 2	apps/web/src/components/mcp/UseInAnotherAppDialog.tsx
+100644 b32d816bd89abd2f09c5306fcaf4ea8bc3111cdc 3	apps/web/src/components/mcp/UseInAnotherAppDialog.tsx
+100644 8aa16fe030cf8d48d9cbc820d33ed49d1caf04bf 1	apps/web/src/components/onboarding/FirstRunGate.tsx
+100644 3bde8b65b209a99a97d920c442ff9c7af2bb8b21 2	apps/web/src/components/onboarding/FirstRunGate.tsx
+100644 22658f836127722a20de27df578ab9ef29e283cc 3	apps/web/src/components/onboarding/FirstRunGate.tsx
+100644 be114c58554afa9dcbd202c3091d49cecdd1163f 1	apps/web/src/components/onboarding/WelcomePage.tsx
+100644 073d9ed8bfb5197a9ab0d5a00322090fa8a6c080 2	apps/web/src/components/onboarding/WelcomePage.tsx
+100644 a5a46efb19d17e3d99980efbef0eeb919934e548 3	apps/web/src/components/onboarding/WelcomePage.tsx
+100644 9de48226672f59cb172dba56e25dced7cc1cb868 1	apps/web/src/components/preview/PreviewPanel.tsx
+100644 b50e8a4a538869855b37ad43c792866a77107686 2	apps/web/src/components/preview/PreviewPanel.tsx
+100644 24e4a9a76e0a02f071c96243b89f93411e5de237 3	apps/web/src/components/preview/PreviewPanel.tsx
+100644 e303ae1451619ea4b48b041a5b3b7759a72590bb 1	apps/web/src/components/preview/PreviewView.tsx
+100644 7a9ea104d504071e24d631469042b928be5d434a 2	apps/web/src/components/preview/PreviewView.tsx
+100644 cd4c14b34cd3ff482e1bcb02bac2c06faa9b28bc 3	apps/web/src/components/preview/PreviewView.tsx
+100644 ca44345e177f037dfc74187767466fd2e2c88c70 1	apps/web/src/components/promptLinks/HostedPromptLinkLanding.tsx
+100644 3eb3addb4b72c91ca8682938e37cb154a4177e8f 2	apps/web/src/components/promptLinks/HostedPromptLinkLanding.tsx
+100644 ba821642be56b8ac947e7c52b2a184ffc428c029 3	apps/web/src/components/promptLinks/HostedPromptLinkLanding.tsx
+100644 0cb3c5d5c15540c8033ccd4a9e620097dc9a89df 1	apps/web/src/components/promptLinks/NewThreadLinkView.tsx
+100644 844821324b4736ab8b3172fa25e6abea0ac80ea9 2	apps/web/src/components/promptLinks/NewThreadLinkView.tsx
+100644 b70b143fb618b544676e697219cd7328d5ce8e6d 3	apps/web/src/components/promptLinks/NewThreadLinkView.tsx
+100644 5e6a61ff3c1daefbbef5622e13424ad5e3da60da 1	apps/web/src/components/promptLinks/linkedPrompt.ts
+100644 72b764f652dee29127e404a19fc99f00fe2ad07b 2	apps/web/src/components/promptLinks/linkedPrompt.ts
+100644 d03a05b1b7efb040456dd73b20f4044a9294f339 3	apps/web/src/components/promptLinks/linkedPrompt.ts
+100644 c715530ef0c5d07cf69deda2051f106ace2a58c6 1	apps/web/src/components/pullRequest/PullRequestsPage.tsx
+100644 50c575e199b8697f1bfc758b4bfe24596bddb273 2	apps/web/src/components/pullRequest/PullRequestsPage.tsx
+100644 26bd5da9ab2688513b4e91b15a81c8cf38cabeea 3	apps/web/src/components/pullRequest/PullRequestsPage.tsx
+100644 7fc81b74492535b990b5281a42e27036253d8db7 1	apps/web/src/components/settings/BrowserImportWizard.tsx
+100644 57ad1c439a3f63da3d091baa586f151ae1bd302a 2	apps/web/src/components/settings/BrowserImportWizard.tsx
+100644 c4bc8ceed4d2d8779d63cdfb3991bedf8c812465 3	apps/web/src/components/settings/BrowserImportWizard.tsx
+100644 aca16a0f5142d9ab5aeda6e4d3db7aac7e79b819 1	apps/web/src/components/settings/CaptureShortcutConfig.tsx
+100644 c34fb6190a99e7ae3cf46493f6c241dc7c766be8 2	apps/web/src/components/settings/CaptureShortcutConfig.tsx
+100644 08906a644b0c730ecd2a1b929f1ed10248a1b4a8 3	apps/web/src/components/settings/CaptureShortcutConfig.tsx
+100644 6b449407abb26fec049880465b18449e23ec2764 1	apps/web/src/components/settings/ChatGptWelcomeCoordinator.tsx
+100644 ad9ba15318a4d7f2b2937b169a037f4ac9977b9a 2	apps/web/src/components/settings/ChatGptWelcomeCoordinator.tsx
+100644 4c54c063d0b7e8a39976086bf8badd62a3593b13 3	apps/web/src/components/settings/ChatGptWelcomeCoordinator.tsx
+100644 ec38480d0f28e8cac537fd151a4925e00a77a366 1	apps/web/src/components/settings/CliCommandSettingsRow.tsx
+100644 5165c7584d1c07d4b63f678c096f685489b616ec 2	apps/web/src/components/settings/CliCommandSettingsRow.tsx
+100644 5fcf1c82ba825ed03368c37bf06a338521bf7853 3	apps/web/src/components/settings/CliCommandSettingsRow.tsx
+100644 a09b1c0b25d8c3a2233fd5578ccaea56a6f18179 1	apps/web/src/components/settings/CodexSetupSection.tsx
+100644 7ec6d05b5b20e049e3d69a01b8d21b75c7114d82 2	apps/web/src/components/settings/CodexSetupSection.tsx
+100644 9982a9a37c3cf32d4fd0e9a8a2b5b2e502d40370 3	apps/web/src/components/settings/CodexSetupSection.tsx
+100644 9d309a8b90fa2882b5d50f12db3f977be2e83ac5 1	apps/web/src/components/settings/ConnectionsSettings.tsx
+100644 bc137386f1d8d71fc1484eb31d95b6db7dc8c4f5 2	apps/web/src/components/settings/ConnectionsSettings.tsx
+100644 b17928b28bc98eacc022858136e9406dc8dce071 3	apps/web/src/components/settings/ConnectionsSettings.tsx
+100644 b4668a07f216e056fd3dd3782bb1ed3f1e14f137 1	apps/web/src/components/settings/DatabaseStorageNotice.tsx
+100644 30f9175c20047f20eb84cccb491b2b6f7245f4d2 2	apps/web/src/components/settings/DatabaseStorageNotice.tsx
+100644 b4458c389d500730ec407a46d2fe505bc116b4a5 3	apps/web/src/components/settings/DatabaseStorageNotice.tsx
+100644 08f96ed6437b28b2ccf35f2e44cbb3d1f21642d3 1	apps/web/src/components/settings/IntegrationsSettings.tsx
+100644 03faad5b96e4557fa31c75f6e76c45658d133b9d 2	apps/web/src/components/settings/IntegrationsSettings.tsx
+100644 a6dd44b5e294557013bb04227f3b9569ed31daf1 3	apps/web/src/components/settings/IntegrationsSettings.tsx
+100644 a352581be5dcf87a1b7b668caf5a0e5022f00ecc 1	apps/web/src/components/settings/KeybindingsSettings.tsx
+100644 329c36c89d7989f8a87e305f956be64e37f51356 2	apps/web/src/components/settings/KeybindingsSettings.tsx
+100644 e22ec7dc64425db5db58dca0290219e8c8d622fc 3	apps/web/src/components/settings/KeybindingsSettings.tsx
+100644 38be7d611518e038c9e8f328fc4c6bb6ee8323e5 1	apps/web/src/components/settings/LabsSettingsPanel.tsx
+100644 a749b80afe7447b2a7f66b7a4b48f337ffac1d36 2	apps/web/src/components/settings/LabsSettingsPanel.tsx
+100644 d5e77b2dc28a30127b945b93c15ee1f9ae928408 3	apps/web/src/components/settings/LabsSettingsPanel.tsx
+100644 6a3631a66523a667beb5fe69e0eb4ef17862c41e 1	apps/web/src/components/settings/LinkedEnvironmentsSettings.tsx
+100644 e5333d41f4e97cee098fb66850be3d59a852dc85 2	apps/web/src/components/settings/LinkedEnvironmentsSettings.tsx
+100644 71afddaa33b3229202c059c9e3c6803849436716 3	apps/web/src/components/settings/LinkedEnvironmentsSettings.tsx
+100644 fa79df91129957c756dc3e1ab0ea8e935f1bdb74 1	apps/web/src/components/settings/LocalEnvironmentSetting.tsx
+100644 1415797d00c19c128ea508eefa50c171139bb91b 2	apps/web/src/components/settings/LocalEnvironmentSetting.tsx
+100644 769a664a7e6088923a6da1427c7c54a6e06a3fa3 3	apps/web/src/components/settings/LocalEnvironmentSetting.tsx
+100644 2185351c77ff4cb927a6090a8efb79e2f5dfc57f 1	apps/web/src/components/settings/MultipleAccountsNote.tsx
+100644 20b655c558c68a3c07ce67b55ebe00246f53b087 2	apps/web/src/components/settings/MultipleAccountsNote.tsx
+100644 aad091562f0a69aa33de55602be91ea07b71b908 3	apps/web/src/components/settings/MultipleAccountsNote.tsx
+100644 5724a4de961676471c34b90dfbfa177a63adcaef 1	apps/web/src/components/settings/NotificationSettings.tsx
+100644 3035e1a6bfc87c7d5bd8ed308151913ba78108ff 2	apps/web/src/components/settings/NotificationSettings.tsx
+100644 16c331c016c896ebec9c82bbb06029aca9056efa 3	apps/web/src/components/settings/NotificationSettings.tsx
+100644 540514e98fa827780c4d1dc4044ad01c3fa6c04a 1	apps/web/src/components/settings/SavedEnvironmentRows.tsx
+100644 ca3ff31b278c3035679f3bc8fb922e22dddccf36 2	apps/web/src/components/settings/SavedEnvironmentRows.tsx
+100644 bb429e0627872d7d20503f0ea9bd0375d2ff0d39 3	apps/web/src/components/settings/SavedEnvironmentRows.tsx
+100644 5e83dd1baadd99eed87018c29dd4c0dad25df076 1	apps/web/src/components/settings/ScheduledTasksSettings.tsx
+100644 ec92fbe4949ad25e37a4e2847e9ce294bfa8d5ea 2	apps/web/src/components/settings/ScheduledTasksSettings.tsx
+100644 3f58083abc2cb81066949fdf07eb9fc61e9dd483 3	apps/web/src/components/settings/ScheduledTasksSettings.tsx
+100644 9555e2575033609190f9e07b41e221c400e20dae 1	apps/web/src/components/settings/SecretsSettings.tsx
+100644 871ccba517f73522c317197f3f32166b59c155f3 2	apps/web/src/components/settings/SecretsSettings.tsx
+100644 cb34364789919a1d4ed0c1c12c5d1c2df04344d6 3	apps/web/src/components/settings/SecretsSettings.tsx
+100644 1579cad9a8af28c6fc3fe9c46cb6f707a42d4050 1	apps/web/src/components/settings/SettingsPanels.logic.ts
+100644 72efb92e9553fec189331b1ef7ff6adf77c3834b 2	apps/web/src/components/settings/SettingsPanels.logic.ts
+100644 0dd8f54f09eb2399ddfeea3446ce7b99ea4d6904 3	apps/web/src/components/settings/SettingsPanels.logic.ts
+100644 c7fa7b4c08c4711da97fbedb61f64e1ee1906d27 1	apps/web/src/components/settings/SettingsPanels.tsx
+100644 14e64d8b6b3a42704db493b803d1154b684d2b9b 2	apps/web/src/components/settings/SettingsPanels.tsx
+100644 10d4e2c6fab5d0cc55332e0a361a4faa789bee32 3	apps/web/src/components/settings/SettingsPanels.tsx
+100644 c69f1e78691499359f25867f2018a050f683670f 1	apps/web/src/components/settings/SnapShotSettings.tsx
+100644 1c0f66f945468ca017ae613324e083033357fda0 2	apps/web/src/components/settings/SnapShotSettings.tsx
+100644 f78fe342fdf09867ca4d21ed2ed568f315486715 3	apps/web/src/components/settings/SnapShotSettings.tsx
+100644 bf078c74bf9b7e08e4507bf9b6cc280929d79906 1	apps/web/src/components/settings/SnapShotSetupDialog.tsx
+100644 de25858e89e98764d14b1ba243939a54776ab525 2	apps/web/src/components/settings/SnapShotSetupDialog.tsx
+100644 c2949848692cc91a7e5733c33f67d6efcc12c80a 3	apps/web/src/components/settings/SnapShotSetupDialog.tsx
+100644 3ddd65988e6381e6348a8cb0d18743ab5fafb528 1	apps/web/src/components/settings/ThemeImportDialog.tsx
+100644 0779eb3d1a8aaa8a0d98df60cbac39f25e244434 2	apps/web/src/components/settings/ThemeImportDialog.tsx
+100644 aeac23821884fdde5d5d65846418d30ab35ccef2 3	apps/web/src/components/settings/ThemeImportDialog.tsx
+100644 a701039f374efb779c9b2b782e056ddc03be805c 1	apps/web/src/components/settings/UpdateTrackSwitchDialog.tsx
+100644 a4c03b4f3154f164165842625f8dc8fe815d86dc 2	apps/web/src/components/settings/UpdateTrackSwitchDialog.tsx
+100644 fd844977b81f5c9e1ed191152c6cb5fc5b784f0c 3	apps/web/src/components/settings/UpdateTrackSwitchDialog.tsx
+100644 a4db548906549baed9d20849af98ccad90dc4124 1	apps/web/src/components/settings/providerStatus.ts
+100644 a2800ae430558514e8e282cd04020d689e9a4dfd 2	apps/web/src/components/settings/providerStatus.ts
+100644 36a31b0fccb04b0be4d67aa0a24876513095ba54 3	apps/web/src/components/settings/providerStatus.ts
+100644 d0654f8902d8c780e54ca65f53c4b37273e07b29 1	apps/web/src/components/settings/scopedSettings.ts
+100644 17291b010e61e2afd5aea2a11d8b0afddf38439d 2	apps/web/src/components/settings/scopedSettings.ts
+100644 b91a5240bef6031e87ca5013efb8572be030ac27 3	apps/web/src/components/settings/scopedSettings.ts
+100644 154ad97baeabe09f2d53cb93093f4fd74cbcacad 1	apps/web/src/components/settings/settingsSearch.ts
+100644 6ded8830dd7511466c46197093039dea63e6ad23 2	apps/web/src/components/settings/settingsSearch.ts
+100644 22d005761fcca82628b919df157b2cba911cf640 3	apps/web/src/components/settings/settingsSearch.ts
+100644 3f4b2a6aaf1e2ae6c896e4f3fdad1814e2346d36 1	apps/web/src/components/sidebar/SidebarChrome.tsx
+100644 ff2498843cb3bbacbbea8c416444f4f655e17677 2	apps/web/src/components/sidebar/SidebarChrome.tsx
+100644 637921f1f91003578bf0bc5acf1a89ea113227b8 3	apps/web/src/components/sidebar/SidebarChrome.tsx
+100644 0398b960e00bcd38a90d53571c290195c4b59d17 1	apps/web/src/components/sidebar/SidebarFolderDrop.tsx
+100644 df8b28bdd750bbcf99e408b06e03e26d6998081b 2	apps/web/src/components/sidebar/SidebarFolderDrop.tsx
+100644 6ac65f0f32fa2667bfd95b75e676a26e91420d9a 3	apps/web/src/components/sidebar/SidebarFolderDrop.tsx
+100644 586438bb4420e8fc3e12fc826a44fcc6737f9fc4 1	apps/web/src/components/sidebar/UpdateEverythingDialog.tsx
+100644 30288b381b6dbe4129980bbe752e3dda207c15a2 2	apps/web/src/components/sidebar/UpdateEverythingDialog.tsx
+100644 048aa54ae620aa3028e501b4d2b5c015a3dfa4fd 3	apps/web/src/components/sidebar/UpdateEverythingDialog.tsx
+100644 647ec5921965f1d781341ea7fa1f11cc84f33c21 1	apps/web/src/components/sidebar/updateEverything.logic.test.ts
+100644 4bd958cb18dbfbc492f9e9694f7ceaad76e4de6c 2	apps/web/src/components/sidebar/updateEverything.logic.test.ts
+100644 c043ce1d950cba3652f0b44b7828fa3dd695e77b 3	apps/web/src/components/sidebar/updateEverything.logic.test.ts
+100644 ac07c82e91b83cb1cc1875b9327b36a1b9044141 1	apps/web/src/components/sidebar/updateEverythingRun.tsx
+100644 d457bdab85c663840a235f3c32e560618b3b4106 2	apps/web/src/components/sidebar/updateEverythingRun.tsx
+100644 ba30ec996cbce4201c104b2c236dc4ae95955331 3	apps/web/src/components/sidebar/updateEverythingRun.tsx
+100644 0881b84c52f35ccc4668b47d8a191b668caedd28 1	apps/web/src/components/ui/standalone-page.tsx
+100644 1ade813c8ba6d8977875ed5a649dd542961037f0 2	apps/web/src/components/ui/standalone-page.tsx
+100644 987c4c09a91156d50d6cf1396f20cfc88adf4ad3 3	apps/web/src/components/ui/standalone-page.tsx
+100644 6ebbdff51df1a32d4256b19dcd89a0bbea7b9411 1	apps/web/src/connection/clientMetadata.ts
+100644 6c0d8a83c6518285a974d7768c8e84cb9d2496ac 2	apps/web/src/connection/clientMetadata.ts
+100644 09cfca2207222cb090785755f2103eba6c7b3cc1 3	apps/web/src/connection/clientMetadata.ts
+100644 98335f5090c51cd908c541e267bbda734299637b 1	apps/web/src/connection/platform.ts
+100644 d04a30c67a37bcb13e0bd75426ead8c0f9c541cc 2	apps/web/src/connection/platform.ts
+100644 7fa47da4bb14f45851c4bda7da6b6734db882c76 3	apps/web/src/connection/platform.ts
+100644 03acaf8cbc49ea555b71827bf96348f6bdd86e16 1	apps/web/src/hooks/useOpenLocalWorkspace.ts
+100644 20f0f1ba2a5cd5f621a8a561860c6ac571540cd6 2	apps/web/src/hooks/useOpenLocalWorkspace.ts
+100644 b6a34a91da6a17e0c389568c4f55f1e5e32104c2 3	apps/web/src/hooks/useOpenLocalWorkspace.ts
+100644 6ddc3904afdf1efc78eb1a0d806b4046076e3f8b 1	apps/web/src/hooks/useStartTriage.ts
+100644 0e68ac9ef741833ecdeed730910b7de0947e8397 2	apps/web/src/hooks/useStartTriage.ts
+100644 75cbde7d239255aba1f20764f6c16b7cf1ba921a 3	apps/web/src/hooks/useStartTriage.ts
+100644 c3ff23ac9983b0d8384aa499f2d03831ee0fa174 1	apps/web/src/i18n/translations/de.json
+100644 988629da1ecd4326e05cb68271753cd7bf60a2b3 2	apps/web/src/i18n/translations/de.json
+100644 9f3f1ebee16f9d8adea83994505d912f1adc3104 3	apps/web/src/i18n/translations/de.json
+100644 a6dc4ca8f4c307b48bbee7f5aab4eafb79085027 1	apps/web/src/i18n/translations/en.json
+100644 afc94d16b94804a2026f8ccc9353bbcd6edd503d 2	apps/web/src/i18n/translations/en.json
+100644 920758b84eeda301e1de066b0eb66cb32c1cb517 3	apps/web/src/i18n/translations/en.json
+100644 12fc167109d2b3ba2b85c2fec271bafc4a6bae66 1	apps/web/src/i18n/translations/es.json
+100644 1a026a3367f70ff1319795fe20ae835257c84b4a 2	apps/web/src/i18n/translations/es.json
+100644 1b32f9631de804d739ad96ceb40f7ef0160695d0 3	apps/web/src/i18n/translations/es.json
+100644 ababe67e15569188fc5c5948e5d7abaac918714b 1	apps/web/src/i18n/translations/fr.json
+100644 230947d95f98e951eb709613879f31e39afd89e5 2	apps/web/src/i18n/translations/fr.json
+100644 e5282855e0213b6fcfd4782077e44346e5c36218 3	apps/web/src/i18n/translations/fr.json
+100644 33de9cf56334cc40d05d17c8d3c59adefb53ecc8 1	apps/web/src/i18n/translations/ja.json
+100644 b500538013763d8c863354187feaee1cea69b79d 2	apps/web/src/i18n/translations/ja.json
+100644 dd789472dbf9449060231b3824f631057fd84193 3	apps/web/src/i18n/translations/ja.json
+100644 5a9c3fba6403310e46b8bc4c1565bbe896cd6c08 1	apps/web/src/i18n/translations/ko.json
+100644 c4151449d5727aab01486e89c088431801aeb727 2	apps/web/src/i18n/translations/ko.json
+100644 4dce73c20602e68ddc3c602288bf512d671e4865 3	apps/web/src/i18n/translations/ko.json
+100644 2b840545d8af3a994c7f224b6b1f17efe780bfcb 1	apps/web/src/i18n/translations/pt-BR.json
+100644 3f40cc62227d856a3a4529e2840418fc889a6250 2	apps/web/src/i18n/translations/pt-BR.json
+100644 2e574b489399c06146cf816ed12ff29fab69956d 3	apps/web/src/i18n/translations/pt-BR.json
+100644 704901860fe1c8145f062f20475faf8fa62147f2 1	apps/web/src/i18n/translations/ru.json
+100644 c473d03b5e9d371dc0aa81b66f8eaf16225594f0 2	apps/web/src/i18n/translations/ru.json
+100644 9cdeef7ba3cf92880bfb95f02c91c4ccc8a310fb 3	apps/web/src/i18n/translations/ru.json
+100644 0f0ea61d587444d471c5a9e8774bf919b639e129 1	apps/web/src/i18n/translations/zh.json
+100644 6d56535aecb6e41e2da8252c72f850caeb46f254 2	apps/web/src/i18n/translations/zh.json
+100644 a8e8caab2649a268d4835f8a395f1c3f33d3c9ba 3	apps/web/src/i18n/translations/zh.json
+100644 81c5cc29a2cfbfeca414fa998c17bd62a642813d 1	apps/web/src/shortcuts/chatRouteCommands.ts
+100644 fdcb0d00705716dfb3ef018c447705f6dfd19390 2	apps/web/src/shortcuts/chatRouteCommands.ts
+100644 90ccf9fc2023f7746f76e707d49689e80c3548fa 3	apps/web/src/shortcuts/chatRouteCommands.ts
+100644 3b45703fb2588fe788039f82c2663e7a7f584d94 1	apps/web/src/versionSkew.ts
+100644 652fcba6d5993182fa7b84828cc5da32c34b570b 2	apps/web/src/versionSkew.ts
+100644 08e64cb77e8ebc32efd7ac8a03e74500802e0817 3	apps/web/src/versionSkew.ts
+100644 4e98e516e46bead7785f890d29b73f734644528f 1	docs/operations/release.md
+100644 869900cfc73bf7e67046c4dd84c0c18575d95f8a 2	docs/operations/release.md
+100644 f37b79f827bddf7e45ada8fd427fb069fd598431 1	packages/client-runtime/package.json
+100644 ad046ec643d8cbc9059e36f83c81920aec034723 2	packages/client-runtime/package.json
+100644 38b1e6bf2b72c8f5cdd46246562ada3417b83443 3	packages/client-runtime/package.json
+100644 fccc68bff751e1f0dc27ed0d805f3f04e418323c 1	packages/client-runtime/src/connection/compatibility.ts
+100644 894059394df64c0c96c3c71309a37802425a0f16 2	packages/client-runtime/src/connection/compatibility.ts
+100644 bc57cdceb78a1a733417ec7c756fee624f59f634 3	packages/client-runtime/src/connection/compatibility.ts
+100644 cd102c08e8723b91a22be37adef9f60358e8235c 1	packages/client-runtime/src/connection/diagnosis.ts
+100644 14acd0aa849b2f8a8c12a040e87d20b7031fb70f 2	packages/client-runtime/src/connection/diagnosis.ts
+100644 9b1e2719b1ef6d3449ad32534bfa831b2a6fdc6d 3	packages/client-runtime/src/connection/diagnosis.ts
+100644 51f228f204a1b67bc879d4f32b61f20d87a9d753 1	packages/client-runtime/src/connection/hostFreeze.ts
+100644 2c3e5ad3e5555744b652e5739944b65da2cda2a7 2	packages/client-runtime/src/connection/hostFreeze.ts
+100644 dfb266ba463d9a968de826d92a0674951b13eb05 3	packages/client-runtime/src/connection/hostFreeze.ts
+100644 d702e1f6b057fb20c7bd0e5cfd12c48cbc52418b 1	packages/client-runtime/src/connection/outdatedHostUpdate.ts
+100644 1cfb99b5057431395d97febb139f31194977b346 2	packages/client-runtime/src/connection/outdatedHostUpdate.ts
+100644 0af68e0edc892555ea35b1dc80558037af7f2e7c 3	packages/client-runtime/src/connection/outdatedHostUpdate.ts
+100644 a446cb2489361f9c0b67ff83e857df4a2f65603e 1	packages/client-runtime/src/relay/errorPresentation.ts
+100644 9d43a40620854bdd3f0fa435eeab76a5ec18ba5c 2	packages/client-runtime/src/relay/errorPresentation.ts
+100644 66b7949d57a940ed3325b17f08fb19c6b73c6bfb 3	packages/client-runtime/src/relay/errorPresentation.ts
+100644 2225e5758bd2da13b76d9f239ca40c46da0dedfd 1	packages/client-runtime/src/state/projectRemoval.ts
+100644 17c863102137ea6265ab8b4666bdcfb45969dd89 2	packages/client-runtime/src/state/projectRemoval.ts
+100644 002a6b33dca23880f4ac2ebc51f8407230d75378 3	packages/client-runtime/src/state/projectRemoval.ts
+100644 9da42b8066d0061936f78974838c822d163cb810 1	packages/client-runtime/src/state/pullRequestDiffHttp.ts
+100644 62cf65550fd6e6ba92ba66ee619d0fba4c3ccde8 2	packages/client-runtime/src/state/pullRequestDiffHttp.ts
+100644 7751a23f2a8423b348f8e84b3498fe84bef8bd22 3	packages/client-runtime/src/state/pullRequestDiffHttp.ts
+100644 99fd12ba5b360365f0c65acc17ac7e2895d08975 1	packages/client-runtime/src/state/threadRequests.ts
+100644 60150f93f668a5a3c6eb3b6bf152599fe4e62b5d 2	packages/client-runtime/src/state/threadRequests.ts
+100644 82cae06eb879de3d10b7a4534b3fe44941a73df0 3	packages/client-runtime/src/state/threadRequests.ts
+100644 7abc540793aff55d73381d9166180aba573fc972 1	packages/provider-acp/src/server/adapter.ts
+100644 25f3f60e5c9d9b8b83b9f9fd168af072ab1d3f8d 2	packages/provider-acp/src/server/adapter.ts
+100644 f4d6b9445e643379e032405e30ef238ff5024b25 3	packages/provider-acp/src/server/adapter.ts
+100644 ea2d7a7d76cacb736e2bfc9876a666952bd3d13b 1	packages/provider-opencode/src/server/OpenCodeRuntime.ts
+100644 089becaf7569c0d956c89a0b7c4b1b5876ea2074 2	packages/provider-opencode/src/server/OpenCodeRuntime.ts
+100644 88e85a29c6b18ff63da13b7d97bbf17000d44556 3	packages/provider-opencode/src/server/OpenCodeRuntime.ts
+100644 705cfe1cabf4e59d36d0b94234426ee758864440 1	packages/provider-opencode/src/server/versionProbe.ts
+100644 6dd079e69908e7f2b8ef20afbd0170eebaf31591 2	packages/provider-opencode/src/server/versionProbe.ts
+100644 a87057bd3ea41917b52e780ec7ca5c2c6411e40c 3	packages/provider-opencode/src/server/versionProbe.ts
+100644 86a8e63de753c2a448dfd8df203eb79874850f1a 1	packages/provider-pi/src/server/status.ts
+100644 d1d9eb16483959fc2a207a7fc0f54905f70f6ff9 2	packages/provider-pi/src/server/status.ts
+100644 76a05fde0b88e8e80d78e0193a39368ff97bd4f0 3	packages/provider-pi/src/server/status.ts
+100644 b5b14ae15520416c814677afbd08ef5ec3c19ebb 1	packages/shared/src/promptLinks.ts
+100644 52c46a1e6373ff97451c49c38f0d939517601f4b 2	packages/shared/src/promptLinks.ts
+100644 17da5ec8d99e12155f202423cae09aecc1376718 3	packages/shared/src/promptLinks.ts
+100644 70114b9fe45ddd42040d7d6a6738aa2bb1b866c0 1	packages/source-control-forgejo/src/server/ForgejoPullRequestProvider.ts
+100644 47a7001e3dd67203fd27883eb65834474bd44417 2	packages/source-control-forgejo/src/server/ForgejoPullRequestProvider.ts
+100644 5ed06cccf97ad11d3cc8f804bf624054aacfe45b 3	packages/source-control-forgejo/src/server/ForgejoPullRequestProvider.ts
+100644 9d34e2412b327f03f20f88385ee835209ffa3b6b 1	scripts/build-desktop-artifact.ts
+100644 72e657a393ea078ba123e245df907026a2da2cd3 2	scripts/build-desktop-artifact.ts
+100644 b6bb677fb41b2c5bcc6d1527e970df8a3fdfe224 3	scripts/build-desktop-artifact.ts
+
+Auto-merging .github/workflows/agent-context-budget.yml
+Auto-merging .github/workflows/ci.yml
+Auto-merging .github/workflows/deploy-relay.yml
+Auto-merging .github/workflows/issue-labels.yml
+CONFLICT (content): Merge conflict in .github/workflows/issue-labels.yml
+Auto-merging .github/workflows/issue-vouch.yml
+CONFLICT (content): Merge conflict in .github/workflows/issue-vouch.yml
+Auto-merging .github/workflows/mobile-android-apk.yml
+Auto-merging .github/workflows/mobile-eas-preview-fork.yml
+CONFLICT (content): Merge conflict in .github/workflows/mobile-eas-preview-fork.yml
+Auto-merging .github/workflows/mobile-eas-preview.yml
+CONFLICT (content): Merge conflict in .github/workflows/mobile-eas-preview.yml
+Auto-merging .github/workflows/mobile-eas-production.yml
+CONFLICT (content): Merge conflict in .github/workflows/mobile-eas-production.yml
+Auto-merging .github/workflows/mobile-fingerprint-check.yml
+CONFLICT (content): Merge conflict in .github/workflows/mobile-fingerprint-check.yml
+Auto-merging .github/workflows/mobile-fingerprint-label.yml
+Auto-merging .github/workflows/mobile-showcase-screenshots.yml
+Auto-merging .github/workflows/pr-limits.yml
+CONFLICT (content): Merge conflict in .github/workflows/pr-limits.yml
+Auto-merging .github/workflows/pr-size.yml
+Auto-merging .github/workflows/pr-vouch.yml
+CONFLICT (content): Merge conflict in .github/workflows/pr-vouch.yml
+Auto-merging .github/workflows/relay-preview-cleanup.yml
+Auto-merging .github/workflows/relay-preview.yml
+Auto-merging .github/workflows/release-desktop.yml
+Auto-merging .github/workflows/release.yml
+Auto-merging .github/workflows/thread-transfer-report.yml
+CONFLICT (content): Merge conflict in .github/workflows/thread-transfer-report.yml
+Auto-merging .github/workflows/web-preview.yml
+Auto-merging README.md
+CONFLICT (content): Merge conflict in README.md
+Auto-merging apps/desktop/package.json
+Auto-merging apps/desktop/resources/installer.nsh
+Auto-merging apps/desktop/src/app/DesktopApp.ts
+CONFLICT (content): Merge conflict in apps/desktop/src/app/DesktopApp.ts
+Auto-merging apps/desktop/src/app/DesktopCliShim.ts
+Auto-merging apps/desktop/src/app/DesktopEnvironment.ts
+Auto-merging apps/desktop/src/app/DesktopStartupRecovery.ts
+CONFLICT (content): Merge conflict in apps/desktop/src/app/DesktopStartupRecovery.ts
+Auto-merging apps/desktop/src/backend/DesktopBackendPool.ts
+CONFLICT (content): Merge conflict in apps/desktop/src/backend/DesktopBackendPool.ts
+Auto-merging apps/desktop/src/backend/DesktopHomeOwner.ts
+CONFLICT (content): Merge conflict in apps/desktop/src/backend/DesktopHomeOwner.ts
+Auto-merging apps/desktop/src/backend/DesktopLocalEnvironmentAuth.ts
+CONFLICT (content): Merge conflict in apps/desktop/src/backend/DesktopLocalEnvironmentAuth.ts
+Auto-merging apps/desktop/src/electron/ElectronShell.ts
+Auto-merging apps/desktop/src/permissions/MacPermissionHelper.ts
+CONFLICT (content): Merge conflict in apps/desktop/src/permissions/MacPermissionHelper.ts
+Auto-merging apps/desktop/src/preview/BrowserImport/BrowserImport.test.ts
+Auto-merging apps/desktop/src/preview/BrowserSession.ts
+CONFLICT (content): Merge conflict in apps/desktop/src/preview/BrowserSession.ts
+Auto-merging apps/desktop/src/snapShot/DesktopSnapShot.test.ts
+Auto-merging apps/desktop/src/snapShot/DesktopSnapShot.ts
+Auto-merging apps/desktop/src/updates/DesktopUpdates.test.ts
+Auto-merging apps/desktop/src/updates/DesktopUpdates.ts
+Auto-merging apps/desktop/src/window/DesktopApplicationMenu.test.ts
+Auto-merging apps/desktop/src/window/DesktopApplicationMenu.ts
+CONFLICT (content): Merge conflict in apps/desktop/src/window/DesktopApplicationMenu.ts
+Auto-merging apps/desktop/src/window/DesktopWindow.test.ts
+Auto-merging apps/desktop/src/wsl/DesktopWslBackend.test.ts
+Auto-merging apps/desktop/src/wsl/DesktopWslEnvironment.ts
+Auto-merging apps/mobile/app.config.ts
+CONFLICT (content): Merge conflict in apps/mobile/app.config.ts
+Auto-merging apps/mobile/modules/t3-composer-editor/android/src/main/java/expo/modules/t3composereditor/T3ComposerEditorModule.kt
+CONFLICT (content): Merge conflict in apps/mobile/modules/t3-composer-editor/android/src/main/java/expo/modules/t3composereditor/T3ComposerEditorModule.kt
+CONFLICT (modify/delete): apps/mobile/scripts/measure-renders.mts deleted in c66881ff2b69a9be002bcb15407f3cb09430548b and modified in ed88b67293dab41ecdd4c1bc7d2dfb69d484b619.  Version ed88b67293dab41ecdd4c1bc7d2dfb69d484b619 of apps/mobile/scripts/measure-renders.mts left in tree.
+Auto-merging apps/mobile/src/components/BrandMark.tsx
+Auto-merging apps/mobile/src/components/CompactBrandTitle.tsx
+CONFLICT (content): Merge conflict in apps/mobile/src/components/CompactBrandTitle.tsx
+Auto-merging apps/mobile/src/features/agent-awareness/remoteRegistration.test.ts
+Auto-merging apps/mobile/src/features/agent-awareness/remoteRegistration.ts
+CONFLICT (content): Merge conflict in apps/mobile/src/features/agent-awareness/remoteRegistration.ts
+Auto-merging apps/mobile/src/features/diagnostics/SettingsDiagnosticsRouteScreen.tsx
+CONFLICT (content): Merge conflict in apps/mobile/src/features/diagnostics/SettingsDiagnosticsRouteScreen.tsx
+Auto-merging apps/mobile/src/features/diagnostics/crash-log-model.ts
+CONFLICT (content): Merge conflict in apps/mobile/src/features/diagnostics/crash-log-model.ts
+Auto-merging apps/mobile/src/features/home/HomeRouteScreen.tsx
+CONFLICT (content): Merge conflict in apps/mobile/src/features/home/HomeRouteScreen.tsx
+Auto-merging apps/mobile/src/features/layout/workspace/ListSearchToolbar.android.tsx
+Auto-merging apps/mobile/src/features/layout/workspace/WorkspaceListHeader.android.tsx
+Auto-merging apps/mobile/src/features/layout/workspace/WorkspaceRootScreen.tsx
+CONFLICT (content): Merge conflict in apps/mobile/src/features/layout/workspace/WorkspaceRootScreen.tsx
+Auto-merging apps/mobile/src/features/settings/OutdatedServerUpdateSection.tsx
+CONFLICT (content): Merge conflict in apps/mobile/src/features/settings/OutdatedServerUpdateSection.tsx
+Auto-merging apps/mobile/src/features/settings/SettingsEnvironmentDetailRouteScreen.tsx
+CONFLICT (content): Merge conflict in apps/mobile/src/features/settings/SettingsEnvironmentDetailRouteScreen.tsx
+Auto-merging apps/mobile/src/features/settings/SettingsNotificationsRouteScreen.tsx
+CONFLICT (content): Merge conflict in apps/mobile/src/features/settings/SettingsNotificationsRouteScreen.tsx
+Auto-merging apps/mobile/src/features/settings/SettingsScheduledTasksRouteScreen.tsx
+CONFLICT (content): Merge conflict in apps/mobile/src/features/settings/SettingsScheduledTasksRouteScreen.tsx
+Auto-merging apps/mobile/src/features/settings/SettingsVoiceRouteScreen.tsx
+CONFLICT (content): Merge conflict in apps/mobile/src/features/settings/SettingsVoiceRouteScreen.tsx
+Auto-merging apps/mobile/src/features/settings/VoiceModelSection.tsx
+CONFLICT (content): Merge conflict in apps/mobile/src/features/settings/VoiceModelSection.tsx
+Auto-merging apps/mobile/src/features/settings/components/SourceControlSignInSection.tsx
+Auto-merging apps/mobile/src/features/settings/environmentUpdateCheck.ts
+Auto-merging apps/mobile/src/features/showcase/showcaseAgentActivity.ts
+CONFLICT (content): Merge conflict in apps/mobile/src/features/showcase/showcaseAgentActivity.ts
+Auto-merging apps/mobile/src/features/threads/ThreadComposer.tsx
+Auto-merging apps/mobile/src/features/threads/ThreadFeed.tsx
+CONFLICT (content): Merge conflict in apps/mobile/src/features/threads/ThreadFeed.tsx
+Auto-merging apps/mobile/src/features/threads/ThreadNavigationSidebar.tsx
+CONFLICT (content): Merge conflict in apps/mobile/src/features/threads/ThreadNavigationSidebar.tsx
+Auto-merging apps/mobile/src/features/threads/ThreadQueueControl.tsx
+CONFLICT (content): Merge conflict in apps/mobile/src/features/threads/ThreadQueueControl.tsx
+Auto-merging apps/mobile/src/features/threads/guestMessageStyle.tsx
+Auto-merging apps/mobile/src/features/threads/new-task-project-selection.test.ts
+Auto-merging apps/mobile/src/features/voice-input/voiceDestination.ts
+CONFLICT (content): Merge conflict in apps/mobile/src/features/voice-input/voiceDestination.ts
+Auto-merging apps/mobile/src/lib/authClientMetadata.ts
+CONFLICT (content): Merge conflict in apps/mobile/src/lib/authClientMetadata.ts
+Auto-merging apps/mobile/src/state/use-thread-composer-state.ts
+CONFLICT (content): Merge conflict in apps/mobile/src/state/use-thread-composer-state.ts
+Auto-merging apps/mobile/src/widgets/AgentActivityWidget.tsx
+CONFLICT (content): Merge conflict in apps/mobile/src/widgets/AgentActivityWidget.tsx
+Auto-merging apps/mobile/src/widgets/agentActivityWidgetTimeline.ts
+CONFLICT (content): Merge conflict in apps/mobile/src/widgets/agentActivityWidgetTimeline.ts
+Auto-merging apps/server/package.json
+CONFLICT (content): Merge conflict in apps/server/package.json
+Auto-merging apps/server/src/auth/EnvironmentAuth.test.ts
+Auto-merging apps/server/src/auth/EnvironmentAuth.ts
+Auto-merging apps/server/src/auth/McpOAuth.ts
+Auto-merging apps/server/src/auth/SessionStore.ts
+Auto-merging apps/server/src/background/KeepAwake.ts
+CONFLICT (content): Merge conflict in apps/server/src/background/KeepAwake.ts
+Auto-merging apps/server/src/binCli.ts
+Auto-merging apps/server/src/cli/automaticPort.ts
+Auto-merging apps/server/src/cli/config.test.ts
+CONFLICT (content): Merge conflict in apps/server/src/cli/config.test.ts
+Auto-merging apps/server/src/cli/config.ts
+Auto-merging apps/server/src/cli/doctor.test.ts
+Auto-merging apps/server/src/cli/doctor.ts
+CONFLICT (content): Merge conflict in apps/server/src/cli/doctor.ts
+Auto-merging apps/server/src/cli/environment.ts
+Auto-merging apps/server/src/cli/install.test.ts
+Auto-merging apps/server/src/cli/invocation.test.ts
+Auto-merging apps/server/src/cli/pair.test.ts
+Auto-merging apps/server/src/cli/policy.test.ts
+Auto-merging apps/server/src/cli/policy.ts
+Auto-merging apps/server/src/cli/server.ts
+CONFLICT (content): Merge conflict in apps/server/src/cli/server.ts
+Auto-merging apps/server/src/cli/service.ts
+CONFLICT (content): Merge conflict in apps/server/src/cli/service.ts
+Auto-merging apps/server/src/cli/theme.ts
+Auto-merging apps/server/src/cli/thread.ts
+Auto-merging apps/server/src/cli/triage.ts
+CONFLICT (content): Merge conflict in apps/server/src/cli/triage.ts
+Auto-merging apps/server/src/cli/uninstall.ts
+Auto-merging apps/server/src/cli/update.test.ts
+Auto-merging apps/server/src/cli/update.ts
+Auto-merging apps/server/src/cloud/bootService.ts
+Auto-merging apps/server/src/cloud/relayResponse.ts
+CONFLICT (content): Merge conflict in apps/server/src/cloud/relayResponse.ts
+Auto-merging apps/server/src/cloud/selfUpdate.ts
+Auto-merging apps/server/src/desktopUpdate/DesktopAppUpdate.ts
+Auto-merging apps/server/src/device/AgentDeviceShim.ts
+Auto-merging apps/server/src/device/DeviceService.test.ts
+Auto-merging apps/server/src/device/SshDeviceHost.ts
+Auto-merging apps/server/src/mcp/AcpMcpStdioBridge.ts
+CONFLICT (content): Merge conflict in apps/server/src/mcp/AcpMcpStdioBridge.ts
+Auto-merging apps/server/src/mcp/McpHttpServer.test.ts
+Auto-merging apps/server/src/mcp/McpHttpServer.ts
+Auto-merging apps/server/src/mcp/WorktreeMcpService.ts
+Auto-merging apps/server/src/orchestration-v2/Adapters/ClaudeAdapterV2.ts
+Auto-merging apps/server/src/orchestration-v2/Adapters/CodexAdapterV2.test.ts
+Auto-merging apps/server/src/orchestration-v2/Adapters/CodexAdapterV2.ts
+CONFLICT (content): Merge conflict in apps/server/src/orchestration-v2/Adapters/CodexAdapterV2.ts
+Auto-merging apps/server/src/orchestration-v2/Adapters/OpenCode2AdapterV2.test.ts
+Auto-merging apps/server/src/orchestration-v2/Orchestrator.ts
+Auto-merging apps/server/src/orchestration-v2/ProjectionStore.test.ts
+Auto-merging apps/server/src/orchestration-v2/ProjectionStore.ts
+Auto-merging apps/server/src/orchestration-v2/ProviderTurnStartService.test.ts
+Auto-merging apps/server/src/orchestration-v2/ProviderTurnStartService.ts
+Auto-merging apps/server/src/orchestration-v2/RestartContinuation.ts
+CONFLICT (content): Merge conflict in apps/server/src/orchestration-v2/RestartContinuation.ts
+Auto-merging apps/server/src/orchestration-v2/runtimeLayer.test.ts
+Auto-merging apps/server/src/peer/PeerForwarding.test.ts
+Auto-merging apps/server/src/peer/PeerLinkRequests.test.ts
+Auto-merging apps/server/src/peer/PeerLinks.test.ts
+Auto-merging apps/server/src/peer/PeerLinks.testkit.ts
+Auto-merging apps/server/src/peer/PeerLinks.ts
+CONFLICT (content): Merge conflict in apps/server/src/peer/PeerLinks.ts
+Auto-merging apps/server/src/peer/PeerMcpClient.ts
+Auto-merging apps/server/src/persistence/AuthSessions.ts
+CONFLICT (content): Merge conflict in apps/server/src/persistence/AuthSessions.ts
+Auto-merging apps/server/src/persistence/DatabaseMaintenance.ts
+Auto-merging apps/server/src/persistence/DatabaseStorage.ts
+Auto-merging apps/server/src/persistence/Migrations.ts
+CONFLICT (content): Merge conflict in apps/server/src/persistence/Migrations.ts
+Auto-merging apps/server/src/persistence/reconcileV2PreviewMigration.test.ts
+CONFLICT (content): Merge conflict in apps/server/src/persistence/reconcileV2PreviewMigration.test.ts
+Auto-merging apps/server/src/policy/policyTemplates.ts
+Auto-merging apps/server/src/preview/PreviewBrowserHost.ts
+Auto-merging apps/server/src/preview/ServerBrowserContexts.test.ts
+CONFLICT (content): Merge conflict in apps/server/src/preview/ServerBrowserContexts.test.ts
+Auto-merging apps/server/src/preview/ServerBrowserPage.ts
+Auto-merging apps/server/src/provider/AntigravityInstallation.ts
+CONFLICT (content): Merge conflict in apps/server/src/provider/AntigravityInstallation.ts
+Auto-merging apps/server/src/provider/AntigravityProvider.ts
+Auto-merging apps/server/src/provider/ClaudeProvider.ts
+Auto-merging apps/server/src/provider/CodexChatGptAuth.test.ts
+Auto-merging apps/server/src/provider/CodexChatGptAuth.ts
+Auto-merging apps/server/src/provider/CodexInstallation.ts
+Auto-merging apps/server/src/provider/Drivers/ClaudeHome.ts
+Auto-merging apps/server/src/provider/Drivers/ClaudeSkills.ts
+Auto-merging apps/server/src/provider/ProviderAuthService.ts
+Auto-merging apps/server/src/provider/ProviderRegistry.test.ts
+Auto-merging apps/server/src/provider/managedRelease.ts
+Auto-merging apps/server/src/provider/providerCompatibility.test.ts
+Auto-merging apps/server/src/provider/providerCompatibility.ts
+Auto-merging apps/server/src/provider/providerInstallation.ts
+Auto-merging apps/server/src/provider/providerMaintenanceRunner.test.ts
+Auto-merging apps/server/src/provider/providerMaintenanceRunner.ts
+Auto-merging apps/server/src/pullRequest/PullRequestService.test.ts
+Auto-merging apps/server/src/server.ts
+Auto-merging apps/server/src/serverOwnership.ts
+Auto-merging apps/server/src/serverRuntimeStartup.ts
+Auto-merging apps/server/src/serviceLauncher.ts
+Auto-merging apps/server/src/speech/CloudSpeech.test.ts
+CONFLICT (content): Merge conflict in apps/server/src/speech/CloudSpeech.test.ts
+Auto-merging apps/server/src/speech/SpeechService.test.ts
+CONFLICT (content): Merge conflict in apps/server/src/speech/SpeechService.test.ts
+Auto-merging apps/server/src/startupAccess.ts
+Auto-merging apps/server/src/terminal/Manager.test.ts
+Auto-merging apps/server/src/terminal/Manager.ts
+Auto-merging apps/server/src/vcs/GitVcsDriverCore.ts
+Auto-merging apps/server/src/vcs/VcsStatusBroadcaster.ts
+Auto-merging apps/web/index.html
+CONFLICT (content): Merge conflict in apps/web/index.html
+Auto-merging apps/web/src/cloud/linkEnvironment.ts
+CONFLICT (content): Merge conflict in apps/web/src/cloud/linkEnvironment.ts
+Auto-merging apps/web/src/components/BranchToolbarBranchSelector.tsx
+Auto-merging apps/web/src/components/ChatView.browser.test.tsx
+Auto-merging apps/web/src/components/ChatView.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/ChatView.tsx
+Auto-merging apps/web/src/components/CommandPalette.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/CommandPalette.tsx
+Auto-merging apps/web/src/components/DiffPanel.tsx
+Auto-merging apps/web/src/components/EnvironmentContextChip.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/EnvironmentContextChip.tsx
+Auto-merging apps/web/src/components/GitHubStarPrompt.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/GitHubStarPrompt.tsx
+Auto-merging apps/web/src/components/HostedEmptyState.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/HostedEmptyState.tsx
+Auto-merging apps/web/src/components/RightPanelTabs.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/RightPanelTabs.tsx
+Auto-merging apps/web/src/components/ServerUpdateAction.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/ServerUpdateAction.tsx
+Auto-merging apps/web/src/components/auth/ConnectAgentSurface.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/auth/ConnectAgentSurface.tsx
+Auto-merging apps/web/src/components/chat/MessagesTimeline.browser.test.tsx
+Auto-merging apps/web/src/components/chat/MessagesTimeline.logic.test.ts
+Auto-merging apps/web/src/components/chat/MessagesTimeline.logic.ts
+Auto-merging apps/web/src/components/chat/QueuedRunsControl.browser.test.tsx
+Auto-merging apps/web/src/components/chat/QueuedRunsControl.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/chat/QueuedRunsControl.tsx
+Auto-merging apps/web/src/components/chat/RightPanelSurfaceContent.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/chat/RightPanelSurfaceContent.tsx
+Auto-merging apps/web/src/components/chat/TimelineAssistantRows.tsx
+Auto-merging apps/web/src/components/chat/TimelineUserMessageRow.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/chat/TimelineUserMessageRow.tsx
+Auto-merging apps/web/src/components/chat/TriageDraftHero.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/chat/TriageDraftHero.tsx
+Auto-merging apps/web/src/components/chat/guestMessageStyle.tsx
+Auto-merging apps/web/src/components/chat/turnDetailAnnouncement.ts
+Auto-merging apps/web/src/components/clerk/MobileClientsUserProfilePage.logic.ts
+Auto-merging apps/web/src/components/clerk/MobileClientsUserProfilePage.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/clerk/MobileClientsUserProfilePage.tsx
+Auto-merging apps/web/src/components/cloud/RelayClientInstallDialog.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/cloud/RelayClientInstallDialog.tsx
+Auto-merging apps/web/src/components/desktop/SshPasswordPromptDialog.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/desktop/SshPasswordPromptDialog.tsx
+Auto-merging apps/web/src/components/desktopUpdate.logic.ts
+CONFLICT (content): Merge conflict in apps/web/src/components/desktopUpdate.logic.ts
+Auto-merging apps/web/src/components/mcp/UseInAnotherAppDialog.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/mcp/UseInAnotherAppDialog.tsx
+Auto-merging apps/web/src/components/mcp/mcpApps.ts
+Auto-merging apps/web/src/components/onboarding/FirstRunGate.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/onboarding/FirstRunGate.tsx
+Auto-merging apps/web/src/components/onboarding/WelcomePage.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/onboarding/WelcomePage.tsx
+Auto-merging apps/web/src/components/preview/PreviewPanel.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/preview/PreviewPanel.tsx
+Auto-merging apps/web/src/components/preview/PreviewView.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/preview/PreviewView.tsx
+Auto-merging apps/web/src/components/promptLinks/HostedPromptLinkLanding.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/promptLinks/HostedPromptLinkLanding.tsx
+Auto-merging apps/web/src/components/promptLinks/NewThreadLinkView.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/promptLinks/NewThreadLinkView.tsx
+Auto-merging apps/web/src/components/promptLinks/linkedPrompt.ts
+CONFLICT (content): Merge conflict in apps/web/src/components/promptLinks/linkedPrompt.ts
+Auto-merging apps/web/src/components/pullRequest/PullRequestsPage.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/pullRequest/PullRequestsPage.tsx
+Auto-merging apps/web/src/components/settings/AcpRegistrySearchStep.browser.test.tsx
+Auto-merging apps/web/src/components/settings/BrowserImportWizard.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/BrowserImportWizard.tsx
+Auto-merging apps/web/src/components/settings/CaptureShortcutConfig.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/CaptureShortcutConfig.tsx
+Auto-merging apps/web/src/components/settings/ChatGptWelcomeCoordinator.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/ChatGptWelcomeCoordinator.tsx
+Auto-merging apps/web/src/components/settings/CliCommandSettingsRow.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/CliCommandSettingsRow.tsx
+Auto-merging apps/web/src/components/settings/CodexSetupSection.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/CodexSetupSection.tsx
+Auto-merging apps/web/src/components/settings/ConnectionsSettings.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/ConnectionsSettings.tsx
+Auto-merging apps/web/src/components/settings/DatabaseStorageNotice.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/DatabaseStorageNotice.tsx
+Auto-merging apps/web/src/components/settings/IntegrationsSettings.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/IntegrationsSettings.tsx
+Auto-merging apps/web/src/components/settings/KeybindingsSettings.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/KeybindingsSettings.tsx
+Auto-merging apps/web/src/components/settings/LabsSettingsPanel.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/LabsSettingsPanel.tsx
+Auto-merging apps/web/src/components/settings/LinkedEnvironmentsSettings.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/LinkedEnvironmentsSettings.tsx
+Auto-merging apps/web/src/components/settings/LocalEnvironmentSetting.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/LocalEnvironmentSetting.tsx
+Auto-merging apps/web/src/components/settings/MultipleAccountsNote.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/MultipleAccountsNote.tsx
+Auto-merging apps/web/src/components/settings/NotificationSettings.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/NotificationSettings.tsx
+Auto-merging apps/web/src/components/settings/SavedEnvironmentRows.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/SavedEnvironmentRows.tsx
+Auto-merging apps/web/src/components/settings/ScheduledTasksSettings.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/ScheduledTasksSettings.tsx
+Auto-merging apps/web/src/components/settings/SecretsSettings.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/SecretsSettings.tsx
+Auto-merging apps/web/src/components/settings/SettingsPanels.logic.ts
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/SettingsPanels.logic.ts
+Auto-merging apps/web/src/components/settings/SettingsPanels.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/SettingsPanels.tsx
+Auto-merging apps/web/src/components/settings/SettingsSidebarNav.tsx
+Auto-merging apps/web/src/components/settings/SnapShotSettings.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/SnapShotSettings.tsx
+Auto-merging apps/web/src/components/settings/SnapShotSetupDialog.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/SnapShotSetupDialog.tsx
+Auto-merging apps/web/src/components/settings/ThemeImportDialog.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/ThemeImportDialog.tsx
+Auto-merging apps/web/src/components/settings/ThemePreviewCircles.tsx
+Auto-merging apps/web/src/components/settings/UpdateTrackSwitchDialog.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/UpdateTrackSwitchDialog.tsx
+Auto-merging apps/web/src/components/settings/providerStatus.ts
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/providerStatus.ts
+Auto-merging apps/web/src/components/settings/scheduledTasksSettings.logic.test.ts
+Auto-merging apps/web/src/components/settings/scopedSettings.ts
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/scopedSettings.ts
+Auto-merging apps/web/src/components/settings/settingsSearch.ts
+CONFLICT (content): Merge conflict in apps/web/src/components/settings/settingsSearch.ts
+Auto-merging apps/web/src/components/sidebar/SidebarChrome.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/sidebar/SidebarChrome.tsx
+Auto-merging apps/web/src/components/sidebar/SidebarFolderDrop.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/sidebar/SidebarFolderDrop.tsx
+Auto-merging apps/web/src/components/sidebar/UpdateEverythingDialog.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/sidebar/UpdateEverythingDialog.tsx
+Auto-merging apps/web/src/components/sidebar/updateEverything.logic.test.ts
+CONFLICT (content): Merge conflict in apps/web/src/components/sidebar/updateEverything.logic.test.ts
+Auto-merging apps/web/src/components/sidebar/updateEverythingRun.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/sidebar/updateEverythingRun.tsx
+Auto-merging apps/web/src/components/ui/standalone-page.tsx
+CONFLICT (content): Merge conflict in apps/web/src/components/ui/standalone-page.tsx
+Auto-merging apps/web/src/connection/clientMetadata.ts
+CONFLICT (content): Merge conflict in apps/web/src/connection/clientMetadata.ts
+Auto-merging apps/web/src/connection/platform.ts
+CONFLICT (content): Merge conflict in apps/web/src/connection/platform.ts
+Auto-merging apps/web/src/hooks/useOpenLocalWorkspace.ts
+CONFLICT (content): Merge conflict in apps/web/src/hooks/useOpenLocalWorkspace.ts
+Auto-merging apps/web/src/hooks/useStartTriage.ts
+CONFLICT (content): Merge conflict in apps/web/src/hooks/useStartTriage.ts
+Auto-merging apps/web/src/i18n/translations/de.json
+CONFLICT (content): Merge conflict in apps/web/src/i18n/translations/de.json
+Auto-merging apps/web/src/i18n/translations/en.json
+CONFLICT (content): Merge conflict in apps/web/src/i18n/translations/en.json
+Auto-merging apps/web/src/i18n/translations/es.json
+CONFLICT (content): Merge conflict in apps/web/src/i18n/translations/es.json
+Auto-merging apps/web/src/i18n/translations/fr.json
+CONFLICT (content): Merge conflict in apps/web/src/i18n/translations/fr.json
+Auto-merging apps/web/src/i18n/translations/ja.json
+CONFLICT (content): Merge conflict in apps/web/src/i18n/translations/ja.json
+Auto-merging apps/web/src/i18n/translations/ko.json
+CONFLICT (content): Merge conflict in apps/web/src/i18n/translations/ko.json
+Auto-merging apps/web/src/i18n/translations/pt-BR.json
+CONFLICT (content): Merge conflict in apps/web/src/i18n/translations/pt-BR.json
+Auto-merging apps/web/src/i18n/translations/ru.json
+CONFLICT (content): Merge conflict in apps/web/src/i18n/translations/ru.json
+Auto-merging apps/web/src/i18n/translations/zh.json
+CONFLICT (content): Merge conflict in apps/web/src/i18n/translations/zh.json
+Auto-merging apps/web/src/index.css
+Auto-merging apps/web/src/lib/bootError.ts
+Auto-merging apps/web/src/routeTree.gen.ts
+Auto-merging apps/web/src/shortcuts/chatRouteCommands.ts
+CONFLICT (content): Merge conflict in apps/web/src/shortcuts/chatRouteCommands.ts
+Auto-merging apps/web/src/versionSkew.ts
+CONFLICT (content): Merge conflict in apps/web/src/versionSkew.ts
+Auto-merging apps/web/test/fakeEnvironment.ts
+Auto-merging apps/web/vite.config.ts
+CONFLICT (modify/delete): docs/operations/release.md deleted in c66881ff2b69a9be002bcb15407f3cb09430548b and modified in ed88b67293dab41ecdd4c1bc7d2dfb69d484b619.  Version ed88b67293dab41ecdd4c1bc7d2dfb69d484b619 of docs/operations/release.md left in tree.
+Auto-merging packages/client-runtime/package.json
+CONFLICT (content): Merge conflict in packages/client-runtime/package.json
+Auto-merging packages/client-runtime/src/authorization/layer.test.ts
+Auto-merging packages/client-runtime/src/connection/compatibility.ts
+CONFLICT (content): Merge conflict in packages/client-runtime/src/connection/compatibility.ts
+Auto-merging packages/client-runtime/src/connection/diagnosis.ts
+CONFLICT (content): Merge conflict in packages/client-runtime/src/connection/diagnosis.ts
+Auto-merging packages/client-runtime/src/connection/errors.ts
+Auto-merging packages/client-runtime/src/connection/hostFreeze.ts
+CONFLICT (content): Merge conflict in packages/client-runtime/src/connection/hostFreeze.ts
+Auto-merging packages/client-runtime/src/connection/model.ts
+Auto-merging packages/client-runtime/src/connection/onboarding.test.ts
+Auto-merging packages/client-runtime/src/connection/outdatedHostUpdate.ts
+CONFLICT (content): Merge conflict in packages/client-runtime/src/connection/outdatedHostUpdate.ts
+Auto-merging packages/client-runtime/src/connection/resolver.test.ts
+Auto-merging packages/client-runtime/src/relay/errorPresentation.ts
+CONFLICT (content): Merge conflict in packages/client-runtime/src/relay/errorPresentation.ts
+Auto-merging packages/client-runtime/src/state/projectGrouping.test.ts
+Auto-merging packages/client-runtime/src/state/projectRemoval.ts
+CONFLICT (content): Merge conflict in packages/client-runtime/src/state/projectRemoval.ts
+Auto-merging packages/client-runtime/src/state/pullRequestDiffHttp.ts
+CONFLICT (content): Merge conflict in packages/client-runtime/src/state/pullRequestDiffHttp.ts
+Auto-merging packages/client-runtime/src/state/threadRequests.ts
+CONFLICT (content): Merge conflict in packages/client-runtime/src/state/threadRequests.ts
+Auto-merging packages/client-runtime/src/userMessage.ts
+Auto-merging packages/contracts/src/auth.ts
+Auto-merging packages/contracts/src/browserImport.ts
+Auto-merging packages/contracts/src/composerContext.ts
+Auto-merging packages/contracts/src/index.ts
+Auto-merging packages/contracts/src/managedPolicy.ts
+Auto-merging packages/contracts/src/orchestrationV2.ts
+Auto-merging packages/contracts/src/pullRequest.ts
+Auto-merging packages/contracts/src/relay.ts
+Auto-merging packages/contracts/src/speech.ts
+Auto-merging packages/contracts/src/t3ProjectFile.ts
+Auto-merging packages/provider-acp-registry/src/server/driver.ts
+Auto-merging packages/provider-acp/src/server/adapter.ts
+CONFLICT (content): Merge conflict in packages/provider-acp/src/server/adapter.ts
+Auto-merging packages/provider-core/src/server/maintenanceResolver.test.ts
+Auto-merging packages/provider-core/src/server/maintenanceResolver.ts
+Auto-merging packages/provider-cursor/src/server/status.test.ts
+Auto-merging packages/provider-cursor/src/server/status.ts
+Auto-merging packages/provider-cursor/src/server/textGeneration.ts
+Auto-merging packages/provider-fx/src/server/status.ts
+Auto-merging packages/provider-muse/src/server/adapter.ts
+Auto-merging packages/provider-muse/src/server/textGeneration.ts
+Auto-merging packages/provider-opencode/src/server/OpenCodeRuntime.ts
+CONFLICT (content): Merge conflict in packages/provider-opencode/src/server/OpenCodeRuntime.ts
+Auto-merging packages/provider-opencode/src/server/status.ts
+Auto-merging packages/provider-opencode/src/server/v2/adapter.ts
+Auto-merging packages/provider-opencode/src/server/versionProbe.ts
+CONFLICT (content): Merge conflict in packages/provider-opencode/src/server/versionProbe.ts
+Auto-merging packages/provider-pi/src/server/adapter.ts
+Auto-merging packages/provider-pi/src/server/status.ts
+CONFLICT (content): Merge conflict in packages/provider-pi/src/server/status.ts
+Auto-merging packages/shared/src/codexAuthHandoff.ts
+Auto-merging packages/shared/src/devProxy.ts
+Auto-merging packages/shared/src/managedPolicyFile.ts
+Auto-merging packages/shared/src/otelEnvironment.ts
+Auto-merging packages/shared/src/promptLinks.ts
+CONFLICT (content): Merge conflict in packages/shared/src/promptLinks.ts
+Auto-merging packages/shared/src/relayClient.ts
+Auto-merging packages/source-control-forgejo/src/server/ForgejoPullRequestProvider.ts
+CONFLICT (content): Merge conflict in packages/source-control-forgejo/src/server/ForgejoPullRequestProvider.ts
+Auto-merging packages/source-control-gitcafe/src/server/GitCafePullRequestProvider.ts
+Auto-merging scripts/build-desktop-artifact.ts
+CONFLICT (content): Merge conflict in scripts/build-desktop-artifact.ts
+
+```
